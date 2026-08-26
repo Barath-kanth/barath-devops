@@ -1,0 +1,13 @@
+{{- if and .Values.mesh.enabled .Values.mesh.mtls }}
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: default
+  labels:
+    app.kubernetes.io/name: bookshelf
+    app.kubernetes.io/component: mesh-security
+    app.kubernetes.io/part-of: bookshelf
+spec:
+  mtls:
+    mode: {{ .Values.mesh.mtls.mode }}
+{{- end }}

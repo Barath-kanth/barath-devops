@@ -1,0 +1,22 @@
+# OIDC role created (existing account, NEW role only).
+#
+# Role ARN:
+#   arn:aws:iam::927120871634:role/gha-barath-devops-ecr
+#
+# Trust: token.actions.githubusercontent.com
+#   repo:Barath-kanth/barath-devops (main, tags v*, pull_request)
+#
+# Perms: ECR push to bookshelf/{catalog-api,loans-api,frontend} in us-east-1
+#
+# GitHub repo Variables (Barath-kanth/barath-devops → Settings → Variables):
+#   AWS_REGION=us-east-1
+#   AWS_ROLE_TO_ASSUME=arn:aws:iam::927120871634:role/gha-barath-devops-ecr
+#   ECR_REGISTRY=927120871634.dkr.ecr.us-east-1.amazonaws.com
+#
+# Local:
+#   export AWS_PROFILE=ohohub-project
+#   export AWS_REGION=us-east-1
+#
+# Delete when done:
+#   aws iam delete-role-policy --role-name gha-barath-devops-ecr --policy-name ecr-push-bookshelf
+#   aws iam delete-role --role-name gha-barath-devops-ecr

@@ -1,0 +1,208 @@
+# Umbrella values — environment overlays can replace image tags / hostname.
+# Subchart values.yaml supply defaults; this file overrides for the full Bookshelf release.
+#
+# Edge model: Internet → AWS NLB → Istio Ingress Gateway → (mTLS) → Services
+# GatewayClass is Istio's (`istio`), NOT nginx. Confirm after install:
+#   kubectl get gatewayclass
+#   kubectl get pods -n istio-system --show-labels
+
+catalog-api:
+  fullnameOverride: catalog-api
+  replicaCount: 2
+  containerImage:
+    repository: YOUR_REGISTRY/catalog-api
+    tag: "36b0304"
+    pullPolicy: IfNotPresent
+  containerPorts:
+    http:
+      port: 3001
+      protocol: TCP
+  service:
+    enabled: true
+    type: ClusterIP
+    ports:
+      app:
+        port: 3001
+        targetPort: http
+        protocol: TCP
+  # Sidecar mesh: rewrite probes so kubelet hits the app, not the proxy
+  podAnnotations:
+    sidecar.istio.io/rewriteAppHTTPProbers: "true"
+  envVars: {}
+  horizontalPodAutoscaler:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+  networkPolicy:
+    enabled: true
+    # Ingress: Istio gateway (N/S) + loans-api (E/W). Mesh mTLS is enforced separately.
+    allowFrom:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: istio-system
+        podSelector:
+          matchLabels:
+            app: istio-ingressgateway
+      - podSelector:
+          matchLabels:
+            app.kubernetes.io/name: loans-api
+    egressTo: []
+
+loans-api:
+  fullnameOverride: loans-api
+  replicaCount: 2
+  containerImage:
+    repository: YOUR_REGISTRY/loans-api
+    tag: "36b0304"
+    pullPolicy: IfNotPresent
+  containerPorts:
+    http:
+      port: 3002
+      protocol: TCP
+  service:
+    enabled: true
+    type: ClusterIP
+    ports:
+      app:
+        port: 3002
+        targetPort: http
+        protocol: TCP
+  podAnnotations:
+    sidecar.istio.io/rewriteAppHTTPProbers: "true"
+  envVars:
+    # Keep http:// — Istio sidecar upgrades to mTLS on the wire (PeerAuthentication STRICT)
+    CATALOG_API_URL: http://catalog-api:3001
+  horizontalPodAutoscaler:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+  networkPolicy:
+    enabled: true
+    allowFrom:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: istio-system
+        podSelector:
+          matchLabels:
+            app: istio-ingressgateway
+    egressTo:
+      - to:
+          - podSelector:
+              matchLabels:
+                app.kubernetes.io/name: catalog-api
+        ports:
+          - protocol: TCP
+            port: 3001
+
+frontend:
+  fullnameOverride: frontend
+  replicaCount: 2
+  containerImage:
+    repository: YOUR_REGISTRY/frontend
+    tag: "36b0304"
+    pullPolicy: IfNotPresent
+  containerPorts:
+    http:
+      port: 80
+      protocol: TCP
+  podAnnotations:
+    sidecar.istio.io/rewriteAppHTTPProbers: "true"
+  startupProbe:
+    httpGet:
+      path: /startupz
+      port: http
+    failureThreshold: 30
+    periodSeconds: 5
+  livenessProbe:
+    httpGet:
+      path: /livez
+      port: http
+    periodSeconds: 20
+    failureThreshold: 3
+    timeoutSeconds: 3
+  readinessProbe:
+    httpGet:
+      path: /readyz
+      port: http
+    periodSeconds: 10
+    failureThreshold: 3
+    timeoutSeconds: 3
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    runAsNonRoot: true
+    runAsUser: 101
+    runAsGroup: 101
+    capabilities:
+      drop:
+        - ALL
+    seccompProfile:
+      type: RuntimeDefault
+  service:
+    enabled: true
+    type: ClusterIP
+    ports:
+      app:
+        port: 80
+        targetPort: http
+        protocol: TCP
+  horizontalPodAutoscaler:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+  networkPolicy:
+    enabled: true
+    allowFrom:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: istio-system
+        podSelector:
+          matchLabels:
+            app: istio-ingressgateway
+    egressTo: []
+
+# ---------------------------------------------------------------------------
+# Gateway API — Istio as controller (className: istio)
+# NLB is on the istio-ingressgateway Service (platform add-on), not this chart.
+# HTTPS listener + cert-manager come later with ExternalDNS / real domain.
+# ---------------------------------------------------------------------------
+gateway:
+  enabled: true
+  name: bookshelf-gateway
+  className: istio
+  hostname: app.example.com
+  listeners:
+    http:
+      port: 80
+      protocol: HTTP
+    # Enable after cert-manager + Certificate / Gateway TLS secret:
+    # https:
+    #   port: 443
+    #   protocol: HTTPS
+    #   certificateRefs:
+    #     - name: bookshelf-tls
+  routes:
+    catalog:
+      path: /api/catalog
+      service: catalog-api
+      port: 3001
+    loans:
+      path: /api/loans
+      service: loans-api
+      port: 3002
+    frontend:
+      path: /
+      service: frontend
+      port: 80
+
+# ---------------------------------------------------------------------------
+# Istio mesh security (east-west): STRICT mTLS for this release namespace
+# Requires: Istio installed + namespace labeled istio-injection=enabled (or ambient)
+# ---------------------------------------------------------------------------
+mesh:
+  enabled: true
+  mtls:
+    mode: STRICT
+  # Optional L7 allow-list on top of NetworkPolicy (Istio AuthorizationPolicy)
+  authorization:
+    enabled: true

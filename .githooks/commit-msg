@@ -1,0 +1,5 @@
+#!/bin/sh
+# Keep assessment history free of Cursor co-author trailers
+tmp=$(mktemp)
+grep -vi 'Co-authored-by: Cursor' "$1" > "$tmp" || true
+mv "$tmp" "$1"

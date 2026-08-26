@@ -1,0 +1,23 @@
+{{- if and .Values.mesh.enabled .Values.mesh.authorization.enabled }}
+# Default-deny at L7 once any AuthorizationPolicy exists in the namespace; this ALLOW
+# list is required. Complements NetworkPolicy (L3/L4). Needs mesh injection + STRICT mTLS.
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: bookshelf-allow
+  labels:
+    app.kubernetes.io/name: bookshelf
+    app.kubernetes.io/component: mesh-security
+    app.kubernetes.io/part-of: bookshelf
+spec:
+  action: ALLOW
+  rules:
+    # North-south: traffic from Istio ingress gateway
+    - from:
+        - source:
+            namespaces: ["istio-system"]
+    # East-west: authenticated workloads in this release namespace
+    - from:
+        - source:
+            namespaces: ["{{ .Release.Namespace }}"]
+{{- end }}

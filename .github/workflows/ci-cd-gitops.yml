@@ -1,0 +1,124 @@
+# CI → ECR → GitOps for Barath-kanth/barath-devops
+# Vars: AWS_ROLE_TO_ASSUME, ECR_REGISTRY
+# Local: export AWS_PROFILE=ohohub-project AWS_REGION=us-east-1
+
+name: CI CD GitOps
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-cd-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  id-token: write
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  # Simple CI — apps have no lint/test scripts yet (syntax check only)
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Syntax check backends
+        run: |
+          node --check apps/backend/catalog-api/src/server.js
+          node --check apps/backend/catalog-api/src/app.js
+          node --check apps/backend/loans-api/src/server.js
+          node --check apps/backend/loans-api/src/app.js
+
+  build:
+    name: ${{ matrix.name }}
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: catalog-api
+            context: apps/backend/catalog-api
+            ecr_repo: bookshelf/catalog-api
+          - name: loans-api
+            context: apps/backend/loans-api
+            ecr_repo: bookshelf/loans-api
+          - name: frontend
+            context: apps/frontend
+            ecr_repo: bookshelf/frontend
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: AWS OIDC
+        if: github.event_name != 'pull_request'
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
+          aws-region: us-east-1
+
+      - name: ECR login
+        if: github.event_name != 'pull_request'
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push
+        env:
+          REGISTRY: ${{ vars.ECR_REGISTRY }}
+        run: |
+          TAG="${GITHUB_SHA:0:7}"
+          IMAGE="${REGISTRY}/${{ matrix.ecr_repo }}:${TAG}"
+
+          docker build -t "$IMAGE" "${{ matrix.context }}"
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "PR build only — skip push"
+            exit 0
+          fi
+
+          docker push "$IMAGE"
+          docker tag "$IMAGE" "${REGISTRY}/${{ matrix.ecr_repo }}:latest"
+          docker push "${REGISTRY}/${{ matrix.ecr_repo }}:latest"
+
+  gitops:
+    name: Bump image tag
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Write tag file and commit
+        env:
+          REGISTRY: ${{ vars.ECR_REGISTRY }}
+        run: |
+          TAG="${GITHUB_SHA:0:7}"
+
+          cat > k8s/helm/chart/bookshelf/image-tags.yaml <<EOF
+          registry: ${REGISTRY}
+          tag: "${TAG}"
+          EOF
+
+          sed -i "s/tag: \".*\"/tag: \"${TAG}\"/" k8s/helm/chart/bookshelf/values.yaml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add k8s/helm/chart/bookshelf/image-tags.yaml k8s/helm/chart/bookshelf/values.yaml
+          git diff --staged --quiet && echo "No changes" && exit 0
+          git commit -m "chore(gitops): image tag ${TAG}"
+          git push

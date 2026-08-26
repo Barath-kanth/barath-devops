@@ -1,0 +1,92 @@
+:root {
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  color: #102018;
+  background: #0c1a14;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    linear-gradient(120deg, rgba(12, 26, 20, 0.88), rgba(12, 26, 20, 0.55)),
+    radial-gradient(circle at 20% 20%, #2f6b52 0, transparent 35%),
+    radial-gradient(circle at 80% 0%, #1d4e63 0, transparent 30%),
+    #0c1a14;
+  color: #e8f2ec;
+}
+
+.hero {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 18vh 1.5rem 4rem;
+}
+
+.brand {
+  font-size: 0.85rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin: 0 0 1rem;
+  color: #9fd0b8;
+}
+
+h1 {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: clamp(2.6rem, 7vw, 4.4rem);
+  line-height: 1.05;
+  margin: 0 0 1rem;
+  max-width: 12ch;
+}
+
+.sub {
+  max-width: 38rem;
+  font-size: 1.1rem;
+  color: #c5d9ce;
+  margin: 0 0 2rem;
+}
+
+.cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+}
+
+.btn,
+.ghost {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.85rem 1.2rem;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.btn {
+  background: #e8f2ec;
+  color: #102018;
+}
+
+.ghost {
+  border: 1px solid #6f9784;
+  color: #e8f2ec;
+}
+
+.section {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 0 1.5rem 5rem;
+}
+
+.section h2 {
+  font-family: "Fraunces", Georgia, serif;
+  margin-bottom: 1rem;
+}
+
+.section ul {
+  padding-left: 1.1rem;
+  color: #c5d9ce;
+  line-height: 1.7;
+}

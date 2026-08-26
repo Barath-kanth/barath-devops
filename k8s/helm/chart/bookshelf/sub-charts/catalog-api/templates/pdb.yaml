@@ -1,0 +1,13 @@
+{{- if gt (int .Values.minPodsAvailable) 0 }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "catalog-api.fullname" . }}
+  labels:
+    {{- include "catalog-api.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.minPodsAvailable }}
+  selector:
+    matchLabels:
+      {{- include "catalog-api.selectorLabels" . | nindent 6 }}
+{{- end }}

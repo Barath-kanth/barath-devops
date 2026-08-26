@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BookShelf — Enterprise Library Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="hero">
+      <p class="brand">BookShelf</p>
+      <h1>Secure library services for modern teams</h1>
+      <p class="sub">
+        Static landing page hosted on S3 + CloudFront — outside the Kubernetes cluster —
+        with edge caching for cost and performance.
+      </p>
+      <div class="cta">
+        <!-- Replace APP_URL after deploy with the SPA / gateway URL -->
+        <a class="btn" href="/app/">Open the app</a>
+        <a class="ghost" href="#architecture">How it works</a>
+      </div>
+    </main>
+
+    <section id="architecture" class="section">
+      <h2>Architecture</h2>
+      <ul>
+        <li><strong>Landing</strong> — S3 origin, CloudFront CDN, TLS, OAC</li>
+        <li><strong>SPA</strong> — React single-page application</li>
+        <li><strong>APIs</strong> — catalog-api + loans-api on EKS behind a gateway / NLB</li>
+        <li><strong>Data</strong> — private RDS PostgreSQL</li>
+      </ul>
+    </section>
+  </body>
+</html>

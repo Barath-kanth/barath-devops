@@ -1,0 +1,242 @@
+# Shared defaults for Bookshelf (dev / stage / prod override on top of this).
+# Keep secrets out of git — inject via External Secrets / CSI / sealed-secrets at deploy time.
+
+fullnameOverride: ""
+
+replicaCount: 2
+
+containerImage:
+  repository: ""
+  tag: ""
+  pullPolicy: IfNotPresent
+
+containerPorts:
+  http:
+    port: 3000
+    protocol: TCP
+    disabled: false
+
+dnsPolicy: ClusterFirst
+
+# Probes use different paths and roles (avoid one URL for all three).
+# startupz = finished boot; livez = process alive (no deps); readyz = can take traffic
+startupProbe:
+  httpGet:
+    path: /startupz
+    port: http
+  failureThreshold: 30
+  periodSeconds: 5
+
+livenessProbe:
+  httpGet:
+    path: /livez
+    port: http
+  periodSeconds: 20
+  failureThreshold: 3
+  timeoutSeconds: 3
+
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: http
+  periodSeconds: 10
+  failureThreshold: 3
+  timeoutSeconds: 3
+
+# Container hardening (do not run privileged in production)
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+shutdownDelay: 5
+
+lifecycleHooks:
+  enabled: false
+
+canary:
+  enabled: false
+  replicaCount: 1
+  containerImage:
+    repository: ""
+    tag: ""
+    pullPolicy: IfNotPresent
+
+deploymentStrategy:
+  enabled: true
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 25%
+    maxUnavailable: 0
+
+deploymentAnnotations: {}
+additionalDeploymentLabels: {}
+
+podAnnotations: {}
+additionalPodLabels: {}
+
+# Keep at least one pod during voluntary disruptions when replicas >= 2
+minPodsAvailable: 1
+
+service:
+  enabled: true
+  type: ClusterIP
+  annotations: {}
+  ports:
+    app:
+      port: 80
+      targetPort: http
+      protocol: TCP
+  sessionAffinity: None
+
+serviceMonitor:
+  enabled: false
+  namespace: monitoring
+  endpoints:
+    default:
+      interval: 30s
+      scrapeTimeout: 10s
+      honorLabels: true
+      path: /metrics
+      port: http
+      scheme: http
+
+envVars: {}
+
+configMaps: {}
+
+persistentVolumes: {}
+
+scratchPaths: {}
+
+# Writable paths when readOnlyRootFilesystem is true (APIs often need /tmp)
+emptyDirs:
+  tmp: /tmp
+
+secrets: {}
+
+containerResources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+nodeSelector: {}
+
+# Prefer spreading replicas across nodes / AZs
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels: {}
+          topologyKey: kubernetes.io/hostname
+
+priorityClassName: ""
+
+tolerations: []
+
+imagePullSecrets: []
+
+terminationGracePeriodSeconds: 30
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  labels: {}
+  automountServiceAccountToken: false
+
+horizontalPodAutoscaler:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+verticalPodAutoscaler:
+  enabled: false
+  updateMode: Off
+  minPodsAvailable: 2
+  mainContainerResourcePolicy:
+    mode: Auto
+    minAllowed:
+      cpu: 50m
+      memory: 64Mi
+    maxAllowed:
+      cpu: "1"
+      memory: 512Mi
+    controlledResources:
+      - cpu
+      - memory
+    controlledValues: RequestsAndLimits
+  extraResourcePolicy:
+    - containerName: "*"
+      mode: Off
+
+customResources:
+  enabled: false
+  resources: {}
+
+# NetworkPolicy defaults — tighten per service in subchart values
+networkPolicy:
+  enabled: true
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: bookshelf
+      ports:
+        - protocol: TCP
+          port: http
+  egress:
+    # DNS
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # In-cluster API calls (loans → catalog); refine with podSelector in subcharts
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: bookshelf
+      ports:
+        - protocol: TCP
+          port: 3001
+        - protocol: TCP
+          port: 3002
+
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels: {}
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1

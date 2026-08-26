@@ -1,0 +1,33 @@
+{{- if .Values.gateway.enabled }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: {{ .Values.gateway.name }}
+  labels:
+    app.kubernetes.io/name: bookshelf
+    app.kubernetes.io/component: gateway
+    app.kubernetes.io/part-of: bookshelf
+spec:
+  gatewayClassName: {{ .Values.gateway.className }}
+  listeners:
+    - name: http
+      protocol: {{ .Values.gateway.listeners.http.protocol }}
+      port: {{ .Values.gateway.listeners.http.port }}
+      hostname: {{ .Values.gateway.hostname | quote }}
+      allowedRoutes:
+        namespaces:
+          from: Same
+    {{- with .Values.gateway.listeners.https }}
+    - name: https
+      protocol: {{ .protocol }}
+      port: {{ .port }}
+      hostname: {{ $.Values.gateway.hostname | quote }}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          {{- toYaml .certificateRefs | nindent 10 }}
+      allowedRoutes:
+        namespaces:
+          from: Same
+    {{- end }}
+{{- end }}

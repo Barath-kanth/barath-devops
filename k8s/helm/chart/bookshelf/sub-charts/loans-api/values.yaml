@@ -1,0 +1,119 @@
+fullnameOverride: loans-api
+replicaCount: 2
+
+containerImage:
+  repository: ""
+  tag: ""
+  pullPolicy: IfNotPresent
+
+containerPorts:
+  http:
+    port: 3002
+    protocol: TCP
+
+dnsPolicy: ClusterFirst
+
+startupProbe:
+  httpGet:
+    path: /startupz
+    port: http
+  failureThreshold: 30
+  periodSeconds: 5
+
+livenessProbe:
+  httpGet:
+    path: /livez
+    port: http
+  periodSeconds: 20
+  failureThreshold: 3
+  timeoutSeconds: 3
+
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: http
+  periodSeconds: 10
+  failureThreshold: 3
+  timeoutSeconds: 3
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+shutdownDelay: 5
+
+deploymentStrategy:
+  enabled: true
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 25%
+    maxUnavailable: 0
+
+podAnnotations: {}
+additionalPodLabels: {}
+deploymentAnnotations: {}
+additionalDeploymentLabels: {}
+
+minPodsAvailable: 1
+
+service:
+  enabled: true
+  type: ClusterIP
+  annotations: {}
+  ports:
+    app:
+      port: 3002
+      targetPort: http
+      protocol: TCP
+
+envVars:
+  CATALOG_API_URL: http://catalog-api:3001
+emptyDirs:
+  tmp: /tmp
+
+containerResources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+nodeSelector: {}
+affinity: {}
+tolerations: []
+imagePullSecrets: []
+terminationGracePeriodSeconds: 30
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  automountServiceAccountToken: false
+
+horizontalPodAutoscaler:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 8
+  targetCPUUtilizationPercentage: 70
+
+networkPolicy:
+  enabled: true
+  allowFrom: []
+  egressTo: []
