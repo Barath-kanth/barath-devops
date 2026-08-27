@@ -1,0 +1,28 @@
+# Karpenter controller + NodePool / EC2NodeClass for aws-devops-dev
+# Chart: oci://public.ecr.aws/karpenter/karpenter
+#
+# Prerequisites (created by install-karpenter.sh):
+#   - IAM role for controller (IRSA)
+#   - IAM role / instance profile for nodes
+#   - SQS interruption queue
+
+serviceAccount:
+  create: false
+  name: karpenter
+
+settings:
+  clusterName: aws-devops-dev
+  clusterEndpoint: "" # set by install script --set
+  interruptionQueue: "" # set by install script --set
+
+controller:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+webhook:
+  enabled: false

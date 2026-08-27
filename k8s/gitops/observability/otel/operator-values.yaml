@@ -1,0 +1,23 @@
+# OpenTelemetry Operator
+# Chart: open-telemetry/opentelemetry-operator
+# Installs cert-manager first (dependency for admission webhooks)
+
+manager:
+  collectorImage:
+    repository: otel/opentelemetry-collector-k8s
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+admissionWebhooks:
+  create: true
+  certManager:
+    enabled: true
+
+# Keep CRDs managed by the chart
+crds:
+  create: true

@@ -4,7 +4,8 @@ description: Bookshelf umbrella chart (catalog-api, loans-api, frontend)
 type: application
 version: 0.1.0
 appVersion: "1.0.0"
-kubeVersion: ">=1.28.0"
+# -0 allows EKS versions like v1.34.9-eks-… (treated as prerelease by Helm)
+kubeVersion: ">=1.28.0-0"
 dependencies:
   - name: catalog-api
     version: 0.1.0

@@ -1,0 +1,46 @@
+# Prometheus scrape for Istio control plane + Envoy sidecars (mesh observability)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: istiod
+  namespace: istio-system
+  labels:
+    release: kps
+spec:
+  selector:
+    matchLabels:
+      app: istiod
+      istio: pilot
+  namespaceSelector:
+    matchNames:
+      - istio-system
+  endpoints:
+    - port: http-monitoring
+      interval: 15s
+      path: /metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: envoy-stats
+  namespace: istio-system
+  labels:
+    release: kps
+spec:
+  selector:
+    matchExpressions:
+      - key: security.istio.io/tlsMode
+        operator: Exists
+  namespaceSelector:
+    matchNames:
+      - bookshelf
+      - istio-system
+  podMetricsEndpoints:
+    - port: http-envoy-prom
+      interval: 15s
+      path: /stats/prometheus
+      relabelings:
+        - action: keep
+          regex: "true"
+          sourceLabels:
+            - __meta_kubernetes_pod_annotation_prometheus_io_scrape

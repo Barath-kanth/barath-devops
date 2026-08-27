@@ -1,0 +1,12 @@
+dependencies:
+- name: catalog-api
+  repository: file://sub-charts/catalog-api
+  version: 0.1.0
+- name: loans-api
+  repository: file://sub-charts/loans-api
+  version: 0.1.0
+- name: frontend
+  repository: file://sub-charts/frontend
+  version: 0.1.0
+digest: sha256:2cca1914e221dc048cfb79f00c7a14e03df5c024369c8019d71e7c57727a6e1d
+generated: "2026-08-27T16:44:36.480613+05:30"

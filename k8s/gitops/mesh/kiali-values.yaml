@@ -1,0 +1,23 @@
+# Kiali — service-mesh topology, golden signals, mTLS status UI
+# Chart: kiali/kiali-server
+auth:
+  strategy: anonymous
+
+deployment:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+external_services:
+  prometheus:
+    url: http://kps-prometheus.observability.svc.cluster.local:9090
+  grafana:
+    enabled: true
+    url: http://kps-grafana.observability.svc.cluster.local
+    in_cluster_url: http://kps-grafana.observability.svc.cluster.local
+  tracing:
+    enabled: false

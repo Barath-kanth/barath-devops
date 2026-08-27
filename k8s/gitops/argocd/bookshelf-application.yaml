@@ -1,5 +1,4 @@
-# Argo CD Application — deploys the Bookshelf Helm umbrella from this repo.
-# Install Argo CD once on the cluster, then: kubectl apply -f k8s/gitops/argocd/
+# Argo CD Application — Bookshelf Helm umbrella (GitOps)
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -26,3 +25,8 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas

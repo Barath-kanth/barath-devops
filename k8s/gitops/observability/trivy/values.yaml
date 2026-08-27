@@ -1,0 +1,33 @@
+# Trivy Operator — continuous vulnerability + config scanning (Aqua)
+# Chart: aqua/trivy-operator
+
+trivy:
+  ignoreUnfixed: true
+  severity: CRITICAL,HIGH,MEDIUM
+  timeout: 5m
+
+operator:
+  scanJobTimeout: 5m
+  scannerReportTTL: "24h"
+  vulnerabilityScannerEnabled: true
+  configAuditScannerEnabled: true
+  rbacAssessmentScannerEnabled: true
+  exposedSecretScannerEnabled: true
+  infraAssessmentScannerEnabled: true
+  clusterComplianceEnabled: true
+  metricsVulnIdEnabled: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+trivyOperator:
+  scanJobsConcurrentLimit: 2
+
+serviceMonitor:
+  enabled: true
+  labels:
+    release: kps

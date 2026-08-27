@@ -1,0 +1,213 @@
+# Observability Applications — charts vendored in-repo (no remote helm pull)
+# Requires Argo CD ≥ 2.6
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    - repoURL: https://github.com/Barath-kanth/barath-devops.git
+      targetRevision: main
+      path: k8s/gitops/observability/prometheus/chart
+      helm:
+        releaseName: kps
+        valueFiles:
+          - $values/k8s/gitops/observability/prometheus/values.yaml
+    - repoURL: https://github.com/Barath-kanth/barath-devops.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loki
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    - repoURL: https://github.com/Barath-kanth/barath-devops.git
+      targetRevision: main
+      path: k8s/gitops/observability/loki/chart
+      helm:
+        releaseName: loki
+        valueFiles:
+          - $values/k8s/gitops/observability/loki/values.yaml
+    - repoURL: https://github.com/Barath-kanth/barath-devops.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: alloy
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    - repoURL: https://github.com/Barath-kanth/barath-devops.git
+      targetRevision: main
+      path: k8s/gitops/observability/loki/alloy-chart/chart
+      helm:
+        releaseName: alloy
+        valueFiles:
+          - $values/k8s/gitops/observability/loki/alloy-values.yaml
+    - repoURL: https://github.com/Barath-kanth/barath-devops.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: trivy-operator
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    - repoURL: https://github.com/Barath-kanth/barath-devops.git
+      targetRevision: main
+      path: k8s/gitops/observability/trivy/chart
+      helm:
+        releaseName: trivy-operator
+        valueFiles:
+          - $values/k8s/gitops/observability/trivy/values.yaml
+    - repoURL: https://github.com/Barath-kanth/barath-devops.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: trivy-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: opentelemetry-operator
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    - repoURL: https://github.com/Barath-kanth/barath-devops.git
+      targetRevision: main
+      path: k8s/gitops/observability/otel/chart
+      helm:
+        releaseName: opentelemetry-operator
+        skipSchemaValidation: true
+        valueFiles:
+          - $values/k8s/gitops/observability/otel/operator-values.yaml
+    - repoURL: https://github.com/Barath-kanth/barath-devops.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: opentelemetry-operator-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+---
+# Collector + Instrumentation CRs (plain YAML)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: otel-instrumentation
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Barath-kanth/barath-devops.git
+    targetRevision: main
+    path: k8s/gitops/observability/otel
+    directory:
+      include: "collector-instrumentation.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 3m
+---
+# Mesh policies + Prometheus scrape for Istio/Envoy
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mesh-observability
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Barath-kanth/barath-devops.git
+    targetRevision: main
+    path: k8s/gitops/mesh
+    directory:
+      include: "{policies.yaml,servicemonitors.yaml}"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: istio-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

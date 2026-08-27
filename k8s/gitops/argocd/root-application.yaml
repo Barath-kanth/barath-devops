@@ -1,5 +1,4 @@
-# App-of-Apps root — apply this after Argo CD is installed.
-# kubectl apply -n argocd -f k8s/gitops/argocd/root-application.yaml
+# App-of-Apps — syncs sibling Application manifests in this directory
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -13,7 +12,7 @@ spec:
     path: k8s/gitops/argocd
     directory:
       recurse: false
-      include: "{bookshelf-application.yaml}"
+      include: "{bookshelf-application.yaml,observability-applications.yaml}"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

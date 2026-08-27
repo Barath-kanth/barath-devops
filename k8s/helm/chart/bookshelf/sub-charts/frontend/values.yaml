@@ -85,6 +85,8 @@ service:
 envVars: {}
 emptyDirs:
   tmp: /tmp
+  cache: /var/cache/nginx
+  run: /run
 
 containerResources:
   requests:
