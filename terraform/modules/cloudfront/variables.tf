@@ -29,71 +29,14 @@ variable "comment" {
 
 variable "custom_error_response" {
   description = "One or more custom error response elements"
-  type = list(object({
-    error_caching_min_ttl = optional(number)
-    error_code            = number
-    response_code         = optional(number)
-    response_page_path    = optional(string)
-  }))
-  default = null
+  type        = any
+  default     = {}
 }
 
 variable "default_cache_behavior" {
   description = "The default cache behavior for this distribution"
-  type = object({
-    allowed_methods           = optional(list(string), ["GET", "HEAD", "OPTIONS"])
-    cache_policy_id           = optional(string)
-    cache_policy_key          = optional(string)
-    cache_policy_name         = optional(string)
-    cached_methods            = optional(list(string), ["GET", "HEAD"])
-    compress                  = optional(bool, true)
-    default_ttl               = optional(number)
-    field_level_encryption_id = optional(string)
-    forwarded_values = optional(object({
-      cookies = object({
-        forward           = optional(string, "none")
-        whitelisted_names = optional(list(string))
-      })
-      headers                 = optional(list(string))
-      query_string            = optional(bool, false)
-      query_string_cache_keys = optional(list(string))
-      }),
-      {
-        cookies = {
-          forward = "none"
-        }
-        query_string = false
-      }
-    )
-    function_association = optional(map(object({
-      event_type   = optional(string)
-      function_arn = optional(string)
-      function_key = optional(string)
-    })))
-    grpc_config = optional(object({
-      enabled = optional(bool)
-    }))
-    lambda_function_association = optional(map(object({
-      event_type   = optional(string)
-      include_body = optional(bool)
-      lambda_arn   = string
-    })))
-    max_ttl                      = optional(number)
-    min_ttl                      = optional(number)
-    origin_request_policy_id     = optional(string)
-    origin_request_policy_key    = optional(string)
-    origin_request_policy_name   = optional(string)
-    realtime_log_config_arn      = optional(string)
-    response_headers_policy_id   = optional(string)
-    response_headers_policy_key  = optional(string)
-    response_headers_policy_name = optional(string)
-    smooth_streaming             = optional(bool)
-    target_origin_id             = string
-    trusted_key_groups           = optional(list(string))
-    trusted_signers              = optional(list(string))
-    viewer_protocol_policy       = optional(string, "https-only")
-  })
-  nullable = false
+  type        = any
+  default     = null
 }
 
 variable "default_root_object" {
@@ -122,63 +65,20 @@ variable "is_ipv6_enabled" {
 
 variable "logging_config" {
   description = "The logging configuration that controls how logs are written to your distribution (maximum one)"
-  type = object({
-    bucket          = optional(string)
-    include_cookies = optional(bool)
-    prefix          = optional(string)
-  })
-  default = null
+  type        = any
+  default     = {}
 }
 
 variable "origin_group" {
   description = "One or more origin_group for this distribution (multiples allowed)"
-  type = map(object({
-    failover_criteria = object({
-      status_codes = list(number)
-    })
-    member = list(object({
-      origin_id = string
-    }))
-    origin_id = optional(string)
-  }))
-  default = null
+  type        = any
+  default     = {}
 }
 
 variable "origin" {
   description = "One or more origins for this distribution (multiples allowed)"
-  type = map(object({
-    connection_attempts = optional(number)
-    connection_timeout  = optional(number)
-    custom_header       = optional(map(string))
-    custom_origin_config = optional(object({
-      http_port                = number
-      https_port               = number
-      ip_address_type          = optional(string)
-      origin_keepalive_timeout = optional(number)
-      origin_read_timeout      = optional(number)
-      origin_protocol_policy   = string
-      origin_ssl_protocols     = optional(list(string), ["TLSv1.2"])
-    }))
-    domain_name               = string
-    origin_access_control_key = optional(string)
-    origin_access_control_id  = optional(string)
-    origin_id                 = optional(string)
-    origin_path               = optional(string)
-    origin_shield = optional(object({
-      enabled              = bool
-      origin_shield_region = optional(string)
-    }))
-    response_completion_timeout = optional(number)
-    vpc_origin_config = optional(object({
-      origin_keepalive_timeout = optional(number)
-      origin_read_timeout      = optional(number)
-      vpc_origin_id            = optional(string)
-      vpc_origin_key           = optional(string)
-      owner_account_id         = optional(string)
-    }))
-  }))
-  default  = {}
-  nullable = false
+  type        = any
+  default     = {}
 }
 
 variable "price_class" {

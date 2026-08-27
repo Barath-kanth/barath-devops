@@ -75,7 +75,7 @@ variable "kubernetes_version" {
 }
 
 variable "eks_endpoint_public_access" {
-  description = "Set true for laptop access without VPN (dev). Prefer false in prod."
+  description = "Public EKS API. Prefer false + bastion/SSM port-forward for secure access."
   type        = bool
   default     = true
 }
@@ -83,6 +83,23 @@ variable "eks_endpoint_public_access" {
 variable "eks_instance_type" {
   type    = string
   default = "t3.medium"
+}
+
+variable "enable_bastion" {
+  description = "Deploy private SSM bastion for EKS API access (no SSH)"
+  type        = bool
+  default     = true
+}
+
+variable "bastion_instance_type" {
+  type    = string
+  default = "t3.micro"
+}
+
+variable "create_ssm_vpc_endpoints" {
+  description = "Interface VPC endpoints so private bastion can use SSM"
+  type        = bool
+  default     = true
 }
 
 ################################################################################

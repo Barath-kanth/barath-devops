@@ -48,9 +48,13 @@ inputs = {
   single_nat_gateway = true
   enable_flow_log    = true
 
-  kubernetes_version         = "1.34"
-  eks_endpoint_public_access = true
+  kubernetes_version               = "1.34"
+  # Private EKS API (+ SSM bastion port-forward). Set true only for emergency break-glass.
+  eks_endpoint_public_access = false
   eks_instance_type          = "t3.medium"
+  enable_bastion             = true
+  bastion_instance_type      = "t3.micro"
+  create_ssm_vpc_endpoints   = true
 
   rds_identifier              = "aws-devops-dev"
   rds_engine                  = "postgres"
@@ -66,5 +70,5 @@ inputs = {
   rds_deletion_protection     = false
   rds_skip_final_snapshot     = true
 
-  static_bucket_name = "aws-devops-dev-static-CHANGE-ME"
+  static_bucket_name = "aws-devops-dev-static-927120871634"
 }

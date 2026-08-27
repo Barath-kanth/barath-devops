@@ -29,8 +29,6 @@ module "rds" {
   username = var.username
   port     = var.port
 
-  password_wo                    = var.password_wo
-  password_wo_version            = var.password_wo_version
   manage_master_user_password    = var.manage_master_user_password
   master_user_secret_kms_key_id = var.master_user_secret_kms_key_id
   iam_database_authentication_enabled = var.iam_database_authentication_enabled
@@ -55,7 +53,7 @@ module "rds" {
   parameter_group_name            = var.parameter_group_name
   parameter_group_use_name_prefix = var.parameter_group_use_name_prefix
   parameter_group_description     = var.parameter_group_description
-  parameters                      = var.parameters
+  parameters = coalesce(var.parameters, [])
   parameter_group_skip_destroy    = var.parameter_group_skip_destroy
 
   # Backups & Maintenance
@@ -71,7 +69,7 @@ module "rds" {
   auto_minor_version_upgrade        = var.auto_minor_version_upgrade
   apply_immediately                 = var.apply_immediately
   deletion_protection               = var.deletion_protection
-  blue_green_update                 = var.blue_green_update
+  blue_green_update = coalesce(var.blue_green_update, {})
 
   # Monitoring & Insights
   monitoring_interval                   = var.monitoring_interval
@@ -104,6 +102,4 @@ module "rds" {
   db_parameter_group_tags = var.db_parameter_group_tags
   db_subnet_group_tags    = var.db_subnet_group_tags
   cloudwatch_log_group_tags = var.cloudwatch_log_group_tags
-
-  region = var.region
 }

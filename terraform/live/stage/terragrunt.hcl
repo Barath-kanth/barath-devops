@@ -47,9 +47,11 @@ inputs = {
   single_nat_gateway = true
   enable_flow_log    = true
 
-  kubernetes_version         = "1.34"
-  eks_endpoint_public_access = true
+  kubernetes_version               = "1.34"
+  eks_endpoint_public_access = false
   eks_instance_type          = "t3.medium"
+  enable_bastion             = true
+  create_ssm_vpc_endpoints   = true
 
   rds_identifier              = "aws-devops-stage"
   rds_engine                  = "postgres"

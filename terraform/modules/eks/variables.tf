@@ -52,8 +52,8 @@ variable "authentication_mode" {
 
 variable "upgrade_policy" {
   description = "Configuration block for the cluster upgrade policy"
-  type = any
-  default = null
+  type        = any
+  default     = {}
 }
 
 variable "control_plane_subnet_ids" {

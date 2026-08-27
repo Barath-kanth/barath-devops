@@ -1,43 +1,44 @@
 # Shared Terragrunt config for all environments.
 # Each env includes this file and supplies its own `inputs`.
+#
+# Backend: S3 + native lockfile (no DynamoDB). Requires Terraform >= 1.11.
+# Create the bucket once (versioning + encryption on), then:
+#   cd live/dev && terragrunt init
 
 locals {
-  project = "aws-devops-assessment"
+  project      = "aws-devops-assessment"
+  aws_region   = "us-east-1"
+  # Unique bucket — change if this name is taken
+  state_bucket = "barath-devops-tfstate-927120871634"
 }
 
 # ---------------------------------------------------------------------------
-# Remote state (enable when the S3 bucket + lock table exist)
-# Separate key per env path → isolation / no cross-env blast radius.
-#
-# Example keys after enable:
-#   aws-devops-assessment/dev/terraform.tfstate
-#   aws-devops-assessment/stage/terraform.tfstate
-#   aws-devops-assessment/prod/terraform.tfstate
+# Remote state — separate key per env (dev / stage / prod)
+# Generated file: backend.tf (do not hand-edit)
 # ---------------------------------------------------------------------------
-# remote_state {
-#   backend = "s3"
-#   disable_init = true # Terragrunt won't auto-create bucket; you create it once
-#
-#   generate = {
-#     path      = "backend.tf"
-#     if_exists = "overwrite_terragrunt"
-#   }
-#
-#   config = {
-#     bucket         = "YOUR_TF_STATE_BUCKET"
-#     key            = "${local.project}/${path_relative_to_include()}/terraform.tfstate"
-#     region         = "us-east-1"
-#     dynamodb_table = "YOUR_TF_LOCK_TABLE"
-#     encrypt        = true
-#   }
-# }
+remote_state {
+  backend = "s3"
+
+  generate = {
+    path      = "backend.tf"
+    if_exists = "overwrite_terragrunt"
+  }
+
+  config = {
+    bucket       = local.state_bucket
+    key          = "${local.project}/${path_relative_to_include()}/terraform.tfstate"
+    region       = local.aws_region
+    encrypt      = true
+    use_lockfile = true
+  }
+}
 
 generate "versions" {
   path      = "versions_override.tf"
   if_exists = "overwrite_terragrunt"
   contents  = <<EOF
 terraform {
-  required_version = ">= 1.5.0"
+  required_version = ">= 1.11.0"
 
   required_providers {
     aws = {

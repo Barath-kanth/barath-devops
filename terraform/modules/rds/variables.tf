@@ -244,8 +244,8 @@ variable "maintenance_window" {
 
 variable "blue_green_update" {
   description = "Enables low-downtime updates using RDS Blue/Green deployments."
-  type = any
-  default = null
+  type        = any
+  default     = {}
 }
 
 variable "backup_retention_period" {
@@ -365,11 +365,11 @@ variable "parameters" {
     value        = string
     apply_method = optional(string)
   }))
-  default = null
+  default = []
 }
 
 variable "parameter_group_skip_destroy" {
-  description = "Set to true if you do not wish the parameter group to be deleted at destroy time, and instead just remove the parameter group from the Terraform state"
+  description = "Set to true if you do not wish the parameter group to be deleted at destroy time"
   type        = bool
   default     = null
 }

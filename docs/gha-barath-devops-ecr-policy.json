@@ -1,0 +1,61 @@
+# IAM policy document for GitHub Actions OIDC role gha-barath-devops-ecr
+# Applied live via: aws iam put-role-policy ... (role may be created outside this stack)
+# Keep in sync when extending CI (ECR push + static landing S3/CloudFront).
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "EcrAuthToken",
+      "Effect": "Allow",
+      "Action": ["ecr:GetAuthorizationToken"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "EcrPushBookshelf",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:CompleteLayerUpload",
+        "ecr:InitiateLayerUpload",
+        "ecr:PutImage",
+        "ecr:UploadLayerPart",
+        "ecr:BatchGetImage",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:DescribeRepositories",
+        "ecr:DescribeImages",
+        "ecr:ListImages"
+      ],
+      "Resource": [
+        "arn:aws:ecr:us-east-1:927120871634:repository/bookshelf/catalog-api",
+        "arn:aws:ecr:us-east-1:927120871634:repository/bookshelf/loans-api",
+        "arn:aws:ecr:us-east-1:927120871634:repository/bookshelf/frontend"
+      ]
+    },
+    {
+      "Sid": "StaticLandingS3",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket", "s3:GetBucketLocation"],
+      "Resource": [
+        "arn:aws:s3:::aws-devops-*-static-927120871634"
+      ]
+    },
+    {
+      "Sid": "StaticLandingS3Objects",
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
+      "Resource": [
+        "arn:aws:s3:::aws-devops-*-static-927120871634/*"
+      ]
+    },
+    {
+      "Sid": "CloudFrontInvalidate",
+      "Effect": "Allow",
+      "Action": [
+        "cloudfront:CreateInvalidation",
+        "cloudfront:GetInvalidation",
+        "cloudfront:ListInvalidations"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

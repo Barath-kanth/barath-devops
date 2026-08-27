@@ -83,6 +83,27 @@ module "eks" {
 }
 
 ################################################################################
+# Bastion (SSM) — private kubectl access when public EKS API is disabled
+################################################################################
+
+module "bastion" {
+  count  = var.enable_bastion ? 1 : 0
+  source = "../bastion"
+
+  name   = local.name
+  region = var.aws_region
+  tags   = local.tags
+
+  vpc_id     = module.network.vpc_id
+  vpc_cidr   = var.vpc_cidr
+  subnet_ids = module.network.private_subnets
+
+  cluster_security_group_id = module.eks.cluster_security_group_id
+  instance_type             = var.bastion_instance_type
+  create_ssm_vpc_endpoints  = var.create_ssm_vpc_endpoints
+}
+
+################################################################################
 # RDS (private DB subnets + SG limited to EKS nodes)
 ################################################################################
 
@@ -209,8 +230,8 @@ module "cloudfront" {
 
   origin = {
     s3 = {
-      domain_name               = module.s3.s3_bucket_bucket_regional_domain_name
-      origin_access_control_key = "s3"
+      domain_name           = module.s3.s3_bucket_bucket_regional_domain_name
+      origin_access_control = "s3"
     }
   }
 
@@ -220,6 +241,8 @@ module "cloudfront" {
     allowed_methods        = ["GET", "HEAD", "OPTIONS"]
     cached_methods         = ["GET", "HEAD"]
     compress               = true
+    # Required when using cache_policy_id (legacy ForwardedValues is incompatible)
+    use_forwarded_values = false
     # AWS managed CachingOptimized
     cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6"
   }
@@ -277,4 +300,54 @@ data "aws_iam_policy_document" "static_bucket" {
 resource "aws_s3_bucket_policy" "static" {
   bucket = module.s3.s3_bucket_id
   policy = data.aws_iam_policy_document.static_bucket.json
+}
+
+################################################################################
+# IRSA — External Secrets Operator (optional continuous SM sync)
+################################################################################
+
+data "aws_iam_policy_document" "external_secrets_assume" {
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    effect  = "Allow"
+    principals {
+      type        = "Federated"
+      identifiers = [module.eks.oidc_provider_arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${module.eks.oidc_provider}:sub"
+      values   = ["system:serviceaccount:external-secrets:external-secrets"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${module.eks.oidc_provider}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "external_secrets" {
+  name               = "${local.name}-external-secrets"
+  assume_role_policy = data.aws_iam_policy_document.external_secrets_assume.json
+  tags               = local.tags
+}
+
+data "aws_iam_policy_document" "external_secrets" {
+  statement {
+    sid    = "ReadSecrets"
+    effect = "Allow"
+    actions = [
+      "secretsmanager:GetSecretValue",
+      "secretsmanager:DescribeSecret",
+      "secretsmanager:ListSecrets",
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_role_policy" "external_secrets" {
+  name   = "${local.name}-external-secrets"
+  role   = aws_iam_role.external_secrets.id
+  policy = data.aws_iam_policy_document.external_secrets.json
 }

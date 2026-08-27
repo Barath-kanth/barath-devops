@@ -3,16 +3,14 @@ module "eks" {
   version = "~> 20.0"
 
   create = var.create
-  region = var.region
   tags   = var.tags
 
   # Cluster Core Configuration
   cluster_name                    = var.name
   cluster_version                 = var.kubernetes_version
   cluster_enabled_log_types       = var.enabled_log_types
-  deletion_protection             = var.deletion_protection
   authentication_mode             = var.authentication_mode
-  cluster_upgrade_policy          = var.upgrade_policy
+  cluster_upgrade_policy = var.upgrade_policy
   control_plane_subnet_ids        = var.control_plane_subnet_ids
   subnet_ids                      = var.subnet_ids
   cluster_endpoint_private_access = var.endpoint_private_access
@@ -84,9 +82,9 @@ module "eks" {
   eks_managed_node_groups = {
     bootstrap = {
       instance_types = [var.instance_type]
-      min_size       = 1
-      max_size       = 2
-      desired_size   = 1
+      min_size       = 2
+      max_size       = 5
+      desired_size   = 2
       capacity_type  = "ON_DEMAND"
       labels = {
         "karpenter.sh/controller" = "true"

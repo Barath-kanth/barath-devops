@@ -46,3 +46,21 @@ output "cloudfront_domain_name" {
 output "cloudfront_distribution_id" {
   value = module.cloudfront.cloudfront_distribution_id
 }
+
+output "bastion_instance_id" {
+  description = "SSM target for EKS API port-forward"
+  value       = try(module.bastion[0].instance_id, null)
+}
+
+output "bastion_private_ip" {
+  value = try(module.bastion[0].private_ip, null)
+}
+
+output "eks_cluster_security_group_id" {
+  value = module.eks.cluster_security_group_id
+}
+
+output "external_secrets_role_arn" {
+  description = "IRSA role for External Secrets Operator"
+  value       = aws_iam_role.external_secrets.arn
+}
