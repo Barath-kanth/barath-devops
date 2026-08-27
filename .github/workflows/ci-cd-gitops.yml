@@ -1,5 +1,6 @@
-# CI → ECR → GitOps for Barath-kanth/barath-devops
+# CI → ECR → GitOps + static landing (S3/CloudFront)
 # Vars: AWS_ROLE_TO_ASSUME, ECR_REGISTRY
+# Optional vars: STATIC_BUCKET_NAME, CLOUDFRONT_DISTRIBUTION_ID (or discovered from Terraform outputs in a prior step)
 # Local: export AWS_PROFILE=ohohub-project AWS_REGION=us-east-1
 
 name: CI CD GitOps
@@ -23,7 +24,6 @@ env:
   AWS_REGION: us-east-1
 
 jobs:
-  # Simple CI — apps have no lint/test scripts yet (syntax check only)
   validate:
     name: Validate
     runs-on: ubuntu-latest
@@ -38,8 +38,10 @@ jobs:
         run: |
           node --check apps/backend/catalog-api/src/server.js
           node --check apps/backend/catalog-api/src/app.js
+          node --check apps/backend/catalog-api/src/db.js
           node --check apps/backend/loans-api/src/server.js
           node --check apps/backend/loans-api/src/app.js
+          node --check apps/backend/loans-api/src/store.js
 
   build:
     name: ${{ matrix.name }}
@@ -117,3 +119,45 @@ jobs:
           git diff --staged --quiet && echo "No changes" && exit 0
           git commit -m "chore(gitops): image tag ${TAG}"
           git push
+
+  landing:
+    name: Deploy static landing
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: AWS OIDC
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
+          aws-region: us-east-1
+
+      - name: Sync landing → S3 + invalidate CloudFront
+        env:
+          BUCKET: ${{ vars.STATIC_BUCKET_NAME }}
+          DIST_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BUCKET:-}" ]; then
+            BUCKET="aws-devops-dev-static-927120871634"
+            echo "Using default STATIC_BUCKET_NAME=$BUCKET (set repo var to override)"
+          fi
+          aws s3 sync apps/landing/ "s3://${BUCKET}/" \
+            --delete \
+            --cache-control "public,max-age=300" \
+            --exclude "*.md"
+          # HTML shorter cache for faster content updates
+          aws s3 cp apps/landing/index.html "s3://${BUCKET}/index.html" \
+            --cache-control "public,max-age=60" \
+            --content-type "text/html"
+
+          if [ -n "${DIST_ID:-}" ]; then
+            aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths "/*"
+          else
+            echo "CLOUDFRONT_DISTRIBUTION_ID unset — S3 synced; skip invalidation"
+          fi

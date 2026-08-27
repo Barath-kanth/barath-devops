@@ -1,7 +1,7 @@
 import cors from "cors";
 import express from "express";
 import morgan from "morgan";
-import { createLoan, listLoans, returnLoan } from "./store.js";
+import { createLoan, dbMode, listLoans, pingDb, returnLoan } from "./store.js";
 
 const catalogBaseUrl = process.env.CATALOG_API_URL || "http://localhost:3001";
 
@@ -33,29 +33,30 @@ export function createApp() {
   app.use(cors());
   app.use(express.json());
 
-  // Probe endpoints with distinct roles (avoid one /healthz for all three probes)
   app.get("/livez", (_req, res) => {
     res.status(200).json({ status: "alive", service: "loans-api" });
   });
 
   app.get("/readyz", async (_req, res) => {
     try {
+      await pingDb();
       const upstream = await fetch(`${catalogBaseUrl}/livez`);
       if (!upstream.ok) {
         return res.status(503).json({ status: "not-ready", reason: "catalog unavailable" });
       }
-      return res.status(200).json({ status: "ready", service: "loans-api" });
+      return res.status(200).json({ status: "ready", service: "loans-api", store: dbMode() });
     } catch {
-      return res.status(503).json({ status: "not-ready", reason: "catalog unreachable" });
+      return res.status(503).json({ status: "not-ready", reason: "catalog unreachable or db down" });
     }
   });
 
   app.get("/startupz", (_req, res) => {
-    res.status(200).json({ status: "started", service: "loans-api" });
+    res.status(200).json({ status: "started", service: "loans-api", store: dbMode() });
   });
 
-  app.get("/api/loans", (_req, res) => {
-    res.json({ items: listLoans(), count: listLoans().length });
+  app.get("/api/loans", async (_req, res) => {
+    const items = await listLoans();
+    res.json({ items, count: items.length });
   });
 
   app.post("/api/loans", async (req, res) => {
@@ -74,7 +75,7 @@ export function createApp() {
       }
 
       await setAvailability(bookId, false);
-      const loan = createLoan({ bookId, borrower });
+      const loan = await createLoan({ bookId, borrower });
       return res.status(201).json({ loan, book: { ...book, available: false } });
     } catch (err) {
       console.error(err);
@@ -84,7 +85,7 @@ export function createApp() {
 
   app.post("/api/loans/:id/return", async (req, res) => {
     try {
-      const loan = returnLoan(req.params.id);
+      const loan = await returnLoan(req.params.id);
       if (!loan) {
         return res.status(404).json({ error: "Loan not found" });
       }

@@ -57,12 +57,23 @@ spec:
               protocol: {{ $port.protocol }}
             {{- end }}
             {{- end }}
+          {{- with .Values.envFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           env:
             - name: PORT
               value: {{ index .Values.containerPorts.http "port" | quote }}
             {{- range $k, $v := .Values.envVars }}
             - name: {{ $k }}
               value: {{ $v | quote }}
+            {{- end }}
+            {{- range .Values.envFromSecrets }}
+            - name: {{ .name }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .secretName }}
+                  key: {{ .key }}
             {{- end }}
           {{- with .Values.startupProbe }}
           startupProbe:

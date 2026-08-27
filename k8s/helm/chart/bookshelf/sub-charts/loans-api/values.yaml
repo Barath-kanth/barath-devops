@@ -84,6 +84,8 @@ service:
 
 envVars:
   CATALOG_API_URL: http://catalog-api:3001
+envFrom: []
+envFromSecrets: []
 emptyDirs:
   tmp: /tmp
 

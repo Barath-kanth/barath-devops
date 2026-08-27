@@ -28,7 +28,24 @@ catalog-api:
   # Sidecar mesh: rewrite probes so kubelet hits the app, not the proxy
   podAnnotations:
     sidecar.istio.io/rewriteAppHTTPProbers: "true"
-  envVars: {}
+  envVars:
+    PGSSLMODE: require
+  envFromSecrets:
+    - name: PGHOST
+      secretName: bookshelf-db
+      key: host
+    - name: PGPORT
+      secretName: bookshelf-db
+      key: port
+    - name: PGUSER
+      secretName: bookshelf-db
+      key: username
+    - name: PGPASSWORD
+      secretName: bookshelf-db
+      key: password
+    - name: PGDATABASE
+      secretName: bookshelf-db
+      key: dbname
   horizontalPodAutoscaler:
     enabled: true
     minReplicas: 2
@@ -46,7 +63,13 @@ catalog-api:
       - podSelector:
           matchLabels:
             app.kubernetes.io/name: loans-api
-    egressTo: []
+    egressTo:
+      - to:
+          - ipBlock:
+              cidr: 10.0.0.0/8
+        ports:
+          - protocol: TCP
+            port: 5432
 
 loans-api:
   fullnameOverride: loans-api
@@ -72,6 +95,23 @@ loans-api:
   envVars:
     # Keep http:// — Istio sidecar upgrades to mTLS on the wire (PeerAuthentication STRICT)
     CATALOG_API_URL: http://catalog-api:3001
+    PGSSLMODE: require
+  envFromSecrets:
+    - name: PGHOST
+      secretName: bookshelf-db
+      key: host
+    - name: PGPORT
+      secretName: bookshelf-db
+      key: port
+    - name: PGUSER
+      secretName: bookshelf-db
+      key: username
+    - name: PGPASSWORD
+      secretName: bookshelf-db
+      key: password
+    - name: PGDATABASE
+      secretName: bookshelf-db
+      key: dbname
   horizontalPodAutoscaler:
     enabled: true
     minReplicas: 2
@@ -85,6 +125,12 @@ loans-api:
         podSelector:
           matchLabels:
             app: istio-ingressgateway
+      - podSelector:
+          matchLabels:
+            app.kubernetes.io/name: frontend
+      - podSelector:
+          matchLabels:
+            app.kubernetes.io/name: catalog-api
     egressTo:
       - to:
           - podSelector:
@@ -93,6 +139,12 @@ loans-api:
         ports:
           - protocol: TCP
             port: 3001
+      - to:
+          - ipBlock:
+              cidr: 10.0.0.0/8
+        ports:
+          - protocol: TCP
+            port: 5432
 
 frontend:
   fullnameOverride: frontend

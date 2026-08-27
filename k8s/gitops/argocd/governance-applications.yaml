@@ -1,0 +1,64 @@
+# External Secrets Operator — sync AWS Secrets Manager → bookshelf-db
+# Chart installed by bootstrap; this Application tracks operator values + CR manifests.
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-secrets
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Barath-kanth/barath-devops.git
+    targetRevision: main
+    path: k8s/gitops/secrets
+    directory:
+      include: "externalsecret.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: bookshelf
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 20s
+        factor: 2
+        maxDuration: 3m
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kyverno
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Barath-kanth/barath-devops.git
+    targetRevision: main
+    path: k8s/gitops/policy
+    directory:
+      include: "policies.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kyverno
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 20s
+        factor: 2
+        maxDuration: 3m

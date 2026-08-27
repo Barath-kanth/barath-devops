@@ -83,6 +83,9 @@ service:
       protocol: TCP
 
 envVars: {}
+# Injected from External Secrets / scripts/sync-rds-secret.sh → Secret bookshelf-db
+envFrom: []
+envFromSecrets: []
 emptyDirs:
   tmp: /tmp
 

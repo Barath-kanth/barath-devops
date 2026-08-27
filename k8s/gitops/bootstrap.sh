@@ -72,6 +72,31 @@ for i in $(seq 1 30); do
 done
 kubectl apply -f "$ROOT/k8s/gitops/observability/otel/collector-instrumentation.yaml"
 
+echo "==> Kyverno (admission policies)"
+kubectl create namespace kyverno --dry-run=client -o yaml | kubectl apply -f -
+helm repo add kyverno https://kyverno.github.io/kyverno/ 2>/dev/null || true
+helm repo update kyverno
+helm upgrade --install kyverno kyverno/kyverno -n kyverno \
+  --version 3.3.7 \
+  --set admissionController.replicas=1 \
+  --set backgroundController.resources.requests.memory=64Mi \
+  --set reportsController.resources.requests.memory=64Mi \
+  --wait --timeout 8m || echo "WARN: Kyverno helm install failed (retry later)"
+
+echo "==> External Secrets Operator (optional SM sync)"
+kubectl create namespace external-secrets --dry-run=client -o yaml | kubectl apply -f -
+helm repo add external-secrets https://charts.external-secrets.io 2>/dev/null || true
+helm repo update external-secrets
+helm upgrade --install external-secrets external-secrets/external-secrets -n external-secrets \
+  --version 0.14.3 \
+  --set installCRDs=true \
+  --set resources.requests.memory=64Mi \
+  --wait --timeout 5m || echo "WARN: ESO helm install failed (use scripts/sync-rds-secret.sh)"
+
+echo "==> Governance policies + secret docs"
+kubectl apply -f "$ROOT/k8s/gitops/policy/policies.yaml" || true
+kubectl apply -f "$ROOT/k8s/gitops/secrets/externalsecret.yaml" || true
+
 echo "==> Annotate API deployments for Node.js auto-instrumentation (not frontend/nginx)"
 kubectl label ns bookshelf istio-injection=disabled --overwrite
 for dep in catalog-api loans-api; do
@@ -84,10 +109,12 @@ kubectl rollout restart deployment/catalog-api deployment/loans-api -n bookshelf
 echo "==> Register Argo CD Applications (GitOps ownership going forward)"
 kubectl apply -f "$ROOT/k8s/gitops/argocd/bookshelf-application.yaml"
 kubectl apply -f "$ROOT/k8s/gitops/argocd/observability-applications.yaml"
+kubectl apply -f "$ROOT/k8s/gitops/argocd/governance-applications.yaml"
 kubectl apply -f "$ROOT/k8s/gitops/argocd/root-application.yaml"
 
 echo
 echo "Bootstrap complete."
-echo "  Argo CD:  kubectl -n argocd port-forward svc/argocd-server 8080:443"
+echo "  Sync RDS secret:  ./scripts/sync-rds-secret.sh"
+echo "  Argo CD:  kubectl -n argocd port-forward svc/argocd-server 8080:8080  # HTTP (insecure)"
 echo "  Grafana:  kubectl -n observability port-forward svc/kps-grafana 3000:80"
 echo "  Password: ChangeMe-Bookshelf!"

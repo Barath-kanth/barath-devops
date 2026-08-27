@@ -12,7 +12,7 @@ spec:
     path: k8s/gitops/argocd
     directory:
       recurse: false
-      include: "{bookshelf-application.yaml,observability-applications.yaml}"
+      include: "{bookshelf-application.yaml,observability-applications.yaml,governance-applications.yaml}"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
