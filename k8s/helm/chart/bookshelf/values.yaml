@@ -11,7 +11,7 @@ catalog-api:
   replicaCount: 2
   containerImage:
     repository: 927120871634.dkr.ecr.us-east-1.amazonaws.com/bookshelf/catalog-api
-    tag: "61022be"
+    tag: "a130d11"
     pullPolicy: IfNotPresent
   containerPorts:
     http:
@@ -53,7 +53,7 @@ loans-api:
   replicaCount: 2
   containerImage:
     repository: 927120871634.dkr.ecr.us-east-1.amazonaws.com/bookshelf/loans-api
-    tag: "61022be"
+    tag: "a130d11"
     pullPolicy: IfNotPresent
   containerPorts:
     http:
@@ -99,7 +99,7 @@ frontend:
   replicaCount: 2
   containerImage:
     repository: 927120871634.dkr.ecr.us-east-1.amazonaws.com/bookshelf/frontend
-    tag: "61022be"
+    tag: "a130d11"
     pullPolicy: IfNotPresent
   containerPorts:
     http:
