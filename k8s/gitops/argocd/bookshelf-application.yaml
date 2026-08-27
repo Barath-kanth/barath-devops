@@ -24,9 +24,26 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
   ignoreDifferences:
     - group: apps
       kind: Deployment
       jsonPointers:
         - /spec/replicas
+    # Gateway API controller mutates status/defaults; ignore so sync stays clean
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      jqPathExpressions:
+        - .status
+        - .metadata.generation
+        - .metadata.resourceVersion
+        - .metadata.managedFields
+      jsonPointers:
+        - /status
+        - /spec/parentRefs
+        - /spec/rules
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      jsonPointers:
+        - /status
+        - /metadata/annotations
