@@ -1,0 +1,28 @@
+# Argo CD Application — deploys the Bookshelf Helm umbrella from this repo.
+# Install Argo CD once on the cluster, then: kubectl apply -f k8s/gitops/argocd/
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bookshelf
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Barath-kanth/barath-devops.git
+    targetRevision: main
+    path: k8s/helm/chart/bookshelf
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: bookshelf
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

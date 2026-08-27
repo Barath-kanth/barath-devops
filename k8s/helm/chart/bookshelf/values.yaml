@@ -10,8 +10,8 @@ catalog-api:
   fullnameOverride: catalog-api
   replicaCount: 2
   containerImage:
-    repository: YOUR_REGISTRY/catalog-api
-    tag: "36b0304"
+    repository: 927120871634.dkr.ecr.us-east-1.amazonaws.com/bookshelf/catalog-api
+    tag: "e3ab777"
     pullPolicy: IfNotPresent
   containerPorts:
     http:
@@ -52,8 +52,8 @@ loans-api:
   fullnameOverride: loans-api
   replicaCount: 2
   containerImage:
-    repository: YOUR_REGISTRY/loans-api
-    tag: "36b0304"
+    repository: 927120871634.dkr.ecr.us-east-1.amazonaws.com/bookshelf/loans-api
+    tag: "e3ab777"
     pullPolicy: IfNotPresent
   containerPorts:
     http:
@@ -98,8 +98,8 @@ frontend:
   fullnameOverride: frontend
   replicaCount: 2
   containerImage:
-    repository: YOUR_REGISTRY/frontend
-    tag: "36b0304"
+    repository: 927120871634.dkr.ecr.us-east-1.amazonaws.com/bookshelf/frontend
+    tag: "e3ab777"
     pullPolicy: IfNotPresent
   containerPorts:
     http:

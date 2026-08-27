@@ -109,12 +109,21 @@ jobs:
         run: |
           TAG="${GITHUB_SHA:0:7}"
 
+          FILE=k8s/helm/chart/bookshelf/values.yaml
           cat > k8s/helm/chart/bookshelf/image-tags.yaml <<EOF
           registry: ${REGISTRY}
           tag: "${TAG}"
           EOF
 
-          sed -i "s/tag: \".*\"/tag: \"${TAG}\"/" k8s/helm/chart/bookshelf/values.yaml
+          sed -i \
+            -e "s|repository: .*bookshelf/catalog-api|repository: ${REGISTRY}/bookshelf/catalog-api|" \
+            -e "s|repository: .*bookshelf/loans-api|repository: ${REGISTRY}/bookshelf/loans-api|" \
+            -e "s|repository: .*bookshelf/frontend|repository: ${REGISTRY}/bookshelf/frontend|" \
+            -e "s|repository: YOUR_REGISTRY/catalog-api|repository: ${REGISTRY}/bookshelf/catalog-api|" \
+            -e "s|repository: YOUR_REGISTRY/loans-api|repository: ${REGISTRY}/bookshelf/loans-api|" \
+            -e "s|repository: YOUR_REGISTRY/frontend|repository: ${REGISTRY}/bookshelf/frontend|" \
+            -e "s|tag: \".*\"|tag: \"${TAG}\"|" \
+            "$FILE"
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

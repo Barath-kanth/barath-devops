@@ -1,0 +1,23 @@
+# App-of-Apps root — apply this after Argo CD is installed.
+# kubectl apply -n argocd -f k8s/gitops/argocd/root-application.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Barath-kanth/barath-devops.git
+    targetRevision: main
+    path: k8s/gitops/argocd
+    directory:
+      recurse: false
+      include: "{bookshelf-application.yaml}"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
