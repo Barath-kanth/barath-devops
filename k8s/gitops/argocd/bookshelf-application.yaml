@@ -1,4 +1,3 @@
-# Argo CD Application — Bookshelf Helm umbrella (GitOps)
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -15,6 +14,7 @@ spec:
     helm:
       valueFiles:
         - values.yaml
+        - image-tags.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: bookshelf
@@ -22,6 +22,12 @@ spec:
     automated:
       prune: true
       selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 20s
+        factor: 2
+        maxDuration: 3m
     syncOptions:
       - CreateNamespace=true
       - RespectIgnoreDifferences=true
@@ -30,7 +36,7 @@ spec:
       kind: Deployment
       jsonPointers:
         - /spec/replicas
-    # Gateway API controller mutates status/defaults; ignore so sync stays clean
+    # gateway controller rewrites status — ignore drift
     - group: gateway.networking.k8s.io
       kind: HTTPRoute
       jqPathExpressions:

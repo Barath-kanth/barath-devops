@@ -303,7 +303,39 @@ resource "aws_s3_bucket_policy" "static" {
 }
 
 ################################################################################
-# IRSA — External Secrets Operator (optional continuous SM sync)
+# App DB secret in SM (for external-secrets)
+################################################################################
+
+data "aws_secretsmanager_secret_version" "rds_master" {
+  secret_id = module.rds.db_master_user_secret_arn
+}
+
+resource "aws_secretsmanager_secret" "bookshelf_db" {
+  name        = "${local.name}/bookshelf-db"
+  description = "Postgres connection JSON for bookshelf (ESO)"
+  tags        = local.tags
+}
+
+resource "aws_secretsmanager_secret_version" "bookshelf_db" {
+  secret_id = aws_secretsmanager_secret.bookshelf_db.id
+  secret_string = jsonencode({
+    host     = module.rds.db_instance_address
+    port     = module.rds.db_instance_port
+    username = jsondecode(data.aws_secretsmanager_secret_version.rds_master.secret_string).username
+    password = jsondecode(data.aws_secretsmanager_secret_version.rds_master.secret_string).password
+    dbname   = coalesce(module.rds.db_instance_name, var.rds_db_name)
+  })
+
+  lifecycle {
+    replace_triggered_by = [
+      module.rds.db_instance_endpoint,
+      module.rds.db_master_user_secret_arn,
+    ]
+  }
+}
+
+################################################################################
+# IRSA — external-secrets operator
 ################################################################################
 
 data "aws_iam_policy_document" "external_secrets_assume" {
@@ -335,14 +367,13 @@ resource "aws_iam_role" "external_secrets" {
 
 data "aws_iam_policy_document" "external_secrets" {
   statement {
-    sid    = "ReadSecrets"
+    sid    = "ReadBookshelfDbSecret"
     effect = "Allow"
     actions = [
       "secretsmanager:GetSecretValue",
       "secretsmanager:DescribeSecret",
-      "secretsmanager:ListSecrets",
     ]
-    resources = ["*"]
+    resources = [aws_secretsmanager_secret.bookshelf_db.arn]
   }
 }
 

@@ -1,4 +1,3 @@
-# App-of-Apps — syncs sibling Application manifests in this directory
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

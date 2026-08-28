@@ -1,5 +1,3 @@
-# Kyverno ClusterPolicies — governance for bookshelf workloads
-# Requires Kyverno installed (bootstrap.sh). Audit-mode first where noted.
 ---
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy

@@ -1,1 +1,9 @@
-tag: "5d2e76c"
+catalog-api:
+  containerImage:
+    tag: "5d2e76c"
+loans-api:
+  containerImage:
+    tag: "5d2e76c"
+frontend:
+  containerImage:
+    tag: "5d2e76c"

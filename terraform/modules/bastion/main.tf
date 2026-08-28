@@ -89,7 +89,8 @@ resource "aws_security_group" "bastion" {
 
 # Allow bastion → EKS API (control plane ENIs use cluster SG)
 resource "aws_security_group_rule" "eks_api_from_bastion" {
-  count = var.cluster_security_group_id != null ? 1 : 0
+  # Use != "" so count is known at plan time (null from a destroyed EKS SG breaks destroy).
+  count = var.cluster_security_group_id != null && var.cluster_security_group_id != "" ? 1 : 0
 
   type                     = "ingress"
   description              = "Bastion to EKS API"

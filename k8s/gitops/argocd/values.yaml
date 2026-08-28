@@ -1,6 +1,4 @@
-# Argo CD — lean HA-off install for GitOps CD
-# Chart: argo/argo-cd
-
+# Argo CD — dev cluster
 crds:
   install: true
 
@@ -12,8 +10,7 @@ configs:
   params:
     server.insecure: true
   cm:
-    # Allow Helm from this org / public charts when using ApplicationSets later
-    timeout.reconciliation: 60s
+    timeout.reconciliation: 30s
     application.resourceTrackingMethod: annotation
 
 controller:

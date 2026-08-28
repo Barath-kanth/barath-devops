@@ -1,6 +1,4 @@
-# IAM policy document for GitHub Actions OIDC role gha-barath-devops-ecr
-# Applied live via: aws iam put-role-policy ... (role may be created outside this stack)
-# Keep in sync when extending CI (ECR push + static landing S3/CloudFront).
+# GHA OIDC role policy (gha-barath-devops-ecr) — applied manually in IAM
 {
   "Version": "2012-10-17",
   "Statement": [

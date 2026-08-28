@@ -1,11 +1,10 @@
-# ASAP install order (after EKS exists)
-#
-# 1) Terragrunt: terraform/live/dev  → VPC + EKS
-# 2) aws eks update-kubeconfig --name <cluster> --region us-east-1 --profile ohohub-project
-# 3) Argo CD:
-#      kubectl create namespace argocd
-#      kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-# 4) kubectl apply -f k8s/gitops/argocd/root-application.yaml
-# 5) Later: Istio Ambient, observability, Karpenter, cert-manager, ExternalDNS
-#
-# Images already in ECR (CI). Argo syncs Helm when values.yaml tags change.
+Order after EKS exists:
+
+1. terragrunt apply in terraform/live/dev
+2. eks-port-forward-dev.sh + kubeconfig
+3. bootstrap.sh
+4. karpenter/install-karpenter.sh
+5. mesh/policies.yaml
+
+Argo CD apps are registered at the end of bootstrap.sh.
+Image tags in k8s/helm/chart/bookshelf/image-tags.yaml are bumped by CI.

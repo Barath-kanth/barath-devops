@@ -1,5 +1,4 @@
-# Observability Applications — charts vendored in-repo (no remote helm pull)
-# Requires Argo CD ≥ 2.6
+# Helm charts are vendored under k8s/gitops/observability (private cluster can't pull from internet)
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application

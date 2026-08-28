@@ -64,3 +64,14 @@ output "external_secrets_role_arn" {
   description = "IRSA role for External Secrets Operator"
   value       = aws_iam_role.external_secrets.arn
 }
+
+output "bookshelf_db_secret_name" {
+  description = "Secrets Manager key for ESO ExternalSecret (stable per environment)"
+  value       = aws_secretsmanager_secret.bookshelf_db.name
+}
+
+output "bookshelf_db_secret_arn" {
+  description = "ARN of the bookshelf application DB secret in Secrets Manager"
+  value       = aws_secretsmanager_secret.bookshelf_db.arn
+  sensitive   = true
+}

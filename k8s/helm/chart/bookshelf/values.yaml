@@ -1,17 +1,10 @@
-# Umbrella values — environment overlays can replace image tags / hostname.
-# Subchart values.yaml supply defaults; this file overrides for the full Bookshelf release.
-#
-# Edge model: Internet → AWS NLB → Istio Ingress Gateway → (mTLS) → Services
-# GatewayClass is Istio's (`istio`), NOT nginx. Confirm after install:
-#   kubectl get gatewayclass
-#   kubectl get pods -n istio-system --show-labels
+# Bookshelf umbrella chart values (dev). Image tags in image-tags.yaml (CI).
 
 catalog-api:
   fullnameOverride: catalog-api
   replicaCount: 2
   containerImage:
     repository: 927120871634.dkr.ecr.us-east-1.amazonaws.com/bookshelf/catalog-api
-    tag: "5d2e76c"
     pullPolicy: IfNotPresent
   containerPorts:
     http:
@@ -76,7 +69,6 @@ loans-api:
   replicaCount: 2
   containerImage:
     repository: 927120871634.dkr.ecr.us-east-1.amazonaws.com/bookshelf/loans-api
-    tag: "5d2e76c"
     pullPolicy: IfNotPresent
   containerPorts:
     http:
@@ -151,7 +143,6 @@ frontend:
   replicaCount: 2
   containerImage:
     repository: 927120871634.dkr.ecr.us-east-1.amazonaws.com/bookshelf/frontend
-    tag: "5d2e76c"
     pullPolicy: IfNotPresent
   containerPorts:
     http:

@@ -1,14 +1,6 @@
 #!/usr/bin/env bash
-# Port-forward to the EKS API server via SSM bastion (no public API / no SSH).
-# Pattern matches the staging example (AWS-StartPortForwardingSessionToRemoteHost).
-#
-# Usage:
-#   ./scripts/eks-port-forward-dev.sh [local_port]
-# Example:
-#   ./scripts/eks-port-forward-dev.sh 8443
-#
-# Keep this terminal open. In another terminal, point kubectl at localhost.
-
+# Tunnel EKS API through SSM bastion (cluster has no public endpoint).
+# Usage: ./scripts/eks-port-forward-dev.sh [local_port]
 set -euo pipefail
 
 ENVIRONMENT="${ENVIRONMENT:-dev}"
@@ -59,30 +51,18 @@ CONTEXT_USER="arn:aws:eks:${REGION}:${ACCOUNT}:cluster/${CLUSTER_NAME}"
 
 cat <<EOF
 
-========================================================================
-Leave THIS terminal open (SSM port-forward).
+Port-forward running on localhost:${LOCAL_PORT} — leave this terminal open.
 
-In ANOTHER terminal:
-
-  export AWS_PROFILE=${PROFILE}
-  export AWS_REGION=${REGION}
-
-  # Point kubectl at the tunnel (TLS verify skipped for localhost forward)
-  kubectl config set-cluster ${CLUSTER_NAME}-local \\
-    --server=https://localhost:${LOCAL_PORT} \\
-    --insecure-skip-tls-verify=true
-
-  # Re-use IAM auth from the real cluster context (after one update-kubeconfig)
+Other terminal:
+  export AWS_PROFILE=${PROFILE} AWS_REGION=${REGION}
   aws eks update-kubeconfig --region ${REGION} --name ${CLUSTER_NAME}
+  kubectl config set-cluster ${CLUSTER_NAME}-local \\
+    --server=https://localhost:${LOCAL_PORT} --insecure-skip-tls-verify=true
   kubectl config set-context ${CLUSTER_NAME}-local \\
     --cluster=${CLUSTER_NAME}-local \\
     --user=$(kubectl config view -o jsonpath="{.contexts[?(@.name=='arn:aws:eks:${REGION}:${ACCOUNT}:cluster/${CLUSTER_NAME}')].context.user}")
   kubectl config use-context ${CLUSTER_NAME}-local
-
   kubectl get nodes
-========================================================================
-
-Starting SSM port-forward (Ctrl+C to stop)...
 
 EOF
 

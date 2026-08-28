@@ -13,7 +13,7 @@ export function getPool() {
   return pool;
 }
 
-/** Build pool from DATABASE_URL or PG* env vars (Secrets Manager / External Secrets). */
+// PG* env vars come from bookshelf-db secret (external secrets)
 export async function initDb() {
   const url = process.env.DATABASE_URL;
   const host = process.env.PGHOST || process.env.DB_HOST;

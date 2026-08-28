@@ -1,83 +1,66 @@
-# aws-devops-assessment (Bookshelf)
+# Bookshelf — DevOps assessment
 
-Secure, multi-environment platform for backend APIs + SPA, mapped to the Surge Global DevOps assessment.
+Backend APIs + SPA on EKS. Static landing on S3/CloudFront. Terraform for infra, Helm + Argo CD for apps.
 
 ## Assumptions
 
-- **Cloud: AWS** — confirmed with the assessment team as an accepted choice (brief lists GCP/Azure; patterns remain portable via Terraform/Helm/GitOps).
-- Account/profile: `ohohub-project`, region `us-east-1`, account `927120871634`.
-- GitHub repo: `Barath-kanth/barath-devops` (CI + Argo source).
-- Cost-sensitive: scale down / `terragrunt destroy` in `terraform/live/dev` when idle.
+- AWS (`us-east-1`), account `927120871634`, profile `ohohub-project`
+- Repo: `Barath-kanth/barath-devops`
+- Team approved AWS instead of GCP/Azure for this submission
+- Only **dev** is wired end-to-end; stage/prod use the same Terragrunt layout
 
-## Quick map to the brief
+## Where things live
 
-| # | Requirement | Where |
-|---|-------------|--------|
-| 1 | Multi-env Terraform + remote state | `terraform/live/{dev,stage,prod}`, `root.hcl` (S3 + `use_lockfile`) |
-| 1 | EKS, VPC, secrets, storage, DB | `terraform/modules/{network,eks,bastion,rds,s3,cloudfront,platform}` |
-| 2 | Helm apps + Gateway + LB | `k8s/helm/chart/bookshelf`, Istio Gateway + NLB |
-| 3 | Static landing + cache | S3 + CloudFront; CI job `landing` syncs `apps/landing/` |
-| 4 | CI/CD + Argo CD | `.github/workflows/ci-cd-gitops.yml`, `k8s/gitops/argocd/` |
-| 5 | Governance + observability | Kyverno policies, Trivy, Prometheus/Grafana/Loki/OTel/Kiali |
-| 7 | Architecture diagram (PDF) | [`docs/architecture.pdf`](docs/architecture.pdf) |
+| Area | Path |
+|------|------|
+| Terraform (dev/stage/prod) | `terraform/live/` |
+| Helm chart | `k8s/helm/chart/bookshelf` |
+| Argo CD apps | `k8s/gitops/argocd/` |
+| CI | `.github/workflows/ci-cd-gitops.yml` |
+| Architecture PDF | `docs/architecture.pdf` |
 
-## Secrets + RDS
+## RDS + secrets
 
-- RDS Postgres master password lives in **AWS Secrets Manager** (`manage_master_user_password`).
-- Apps read `PGHOST` / `PGUSER` / `PGPASSWORD` / `PGDATABASE` (fallback: in-memory if unset).
-- Sync into the cluster:
+RDS password is in Secrets Manager (`manage_master_user_password`). Terraform also writes `aws-devops-<env>/bookshelf-db` for the app connection string. External Secrets Operator syncs that into `bookshelf/bookshelf-db`; pods read it via `envFrom`.
 
 ```bash
-./scripts/sync-rds-secret.sh          # → Secret bookshelf/bookshelf-db
-# optional continuous sync: External Secrets Operator + IRSA (output external_secrets_role_arn)
+kubectl -n bookshelf get externalsecret,secret bookshelf-db
 ```
 
-## Private EKS API + bastion (SSM)
+## Deploy flow
 
-- **Private** API endpoint: enabled  
-- **Public** API endpoint: **disabled**  
-- **Bastion** in a private subnet (SSM only) + VPC endpoints for SSM  
+1. `cd terraform/live/dev && terragrunt apply`
+2. `./scripts/eks-port-forward-dev.sh 8443` (private API — keep terminal open)
+3. `./k8s/gitops/bootstrap.sh`
+4. `./k8s/gitops/karpenter/install-karpenter.sh`
+5. `kubectl apply -f k8s/gitops/mesh/policies.yaml`
 
-### Apply (dev)
+Push to `main` with app changes → GitHub Actions builds images, pushes ECR, updates `image-tags.yaml`. Argo CD has automated sync on the bookshelf app so the cluster picks up the new tag without a manual sync.
+
+Helm-only edits under `k8s/` go straight to Git; Argo syncs those on its own.
+
+## CI variables (GitHub)
+
+| Variable | Notes |
+|----------|-------|
+| `AWS_ROLE_TO_ASSUME` | OIDC role for ECR + S3 |
+| `ECR_REGISTRY` | `927120871634.dkr.ecr.us-east-1.amazonaws.com` |
+| `STATIC_BUCKET_NAME` | landing bucket |
+| `CLOUDFRONT_DISTRIBUTION_ID` | for cache invalidation |
+
+## Handy commands
 
 ```bash
-export AWS_PROFILE=ohohub-project AWS_REGION=us-east-1
-cd terraform/live/dev && terragrunt apply
+# kubectl (after port-forward script)
+kubectl -n argocd get applications
+kubectl -n bookshelf get pods
+
+# UIs
+kubectl -n argocd port-forward svc/argocd-server 8080:8080
+kubectl -n observability port-forward svc/kps-grafana 3000:80
 ```
 
-### kubectl via port-forward
-
-```bash
-./scripts/eks-port-forward-dev.sh 8443
-# then use context aws-devops-dev-local (see script output / docs)
-```
-
-## Platform bootstrap
-
-```bash
-./k8s/gitops/bootstrap.sh
-./scripts/sync-rds-secret.sh
-./k8s/gitops/karpenter/install-karpenter.sh
-kubectl apply -f k8s/gitops/mesh/policies.yaml
-```
-
-## CI repo variables
-
-| Variable | Purpose |
-|----------|---------|
-| `AWS_ROLE_TO_ASSUME` | OIDC role for ECR + S3/CloudFront |
-| `ECR_REGISTRY` | e.g. `927120871634.dkr.ecr.us-east-1.amazonaws.com` |
-| `STATIC_BUCKET_NAME` | Landing bucket (default: `aws-devops-dev-static-927120871634`) |
-| `CLOUDFRONT_DISTRIBUTION_ID` | Optional; enables cache invalidation |
-
-## Useful ports
-
-- Landing: CloudFront domain (`terragrunt output cloudfront_domain_name`)  
-- Grafana: `kubectl -n observability port-forward svc/kps-grafana 3000:80`  
-- Kiali: `kubectl -n istio-system port-forward svc/kiali 20001:20001`  
-- Argo CD: `kubectl -n argocd port-forward deploy/argocd-server 8080:8080` (HTTP)
-
-## Destroy
+## Teardown
 
 ```bash
 cd terraform/live/dev && terragrunt destroy

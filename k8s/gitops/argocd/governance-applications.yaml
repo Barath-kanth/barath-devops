@@ -1,10 +1,8 @@
-# External Secrets Operator — sync AWS Secrets Manager → bookshelf-db
-# Chart installed by bootstrap; this Application tracks operator values + CR manifests.
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: external-secrets
+  name: external-secrets-config
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -15,10 +13,9 @@ spec:
     targetRevision: main
     path: k8s/gitops/secrets
     directory:
-      include: "externalsecret.yaml"
+      include: "{clustersecretstore.yaml,externalsecret.yaml}"
   destination:
     server: https://kubernetes.default.svc
-    namespace: bookshelf
   syncPolicy:
     automated:
       prune: true
