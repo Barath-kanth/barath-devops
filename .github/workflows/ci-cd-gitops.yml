@@ -100,20 +100,30 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push
+      - name: Build image
+        id: build
         env:
           REGISTRY: ${{ vars.ECR_REGISTRY }}
         run: |
           TAG="${GITHUB_SHA:0:7}"
           IMAGE="${REGISTRY}/${{ matrix.ecr_repo }}:${TAG}"
-
           docker build -t "$IMAGE" "${{ matrix.context }}"
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
 
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "PR build only — skip push"
-            exit 0
-          fi
+      - name: Trivy scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ steps.build.outputs.image }}
+          format: table
+          exit-code: "0"
+          severity: CRITICAL,HIGH
 
+      - name: Push to ECR
+        if: github.event_name != 'pull_request'
+        env:
+          REGISTRY: ${{ vars.ECR_REGISTRY }}
+        run: |
+          IMAGE="${{ steps.build.outputs.image }}"
           docker push "$IMAGE"
           docker tag "$IMAGE" "${REGISTRY}/${{ matrix.ecr_repo }}:latest"
           docker push "${REGISTRY}/${{ matrix.ecr_repo }}:latest"

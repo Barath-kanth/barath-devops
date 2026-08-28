@@ -1,0 +1,40 @@
+# Falco — runtime threat detection (syscall / K8s audit events)
+# Chart: falcosecurity/falco
+
+driver:
+  kind: modern_ebpf
+
+falco:
+  jsonOutput: true
+  httpOutput:
+    enabled: false
+  metrics:
+    enabled: true
+  webserver:
+    enabled: true
+
+serviceMonitor:
+  enabled: true
+  labels:
+    release: kps
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+customRules:
+  bookshelf-shell.yaml: |-
+    - rule: Bookshelf Shell Spawned
+      desc: shell inside bookshelf workload
+      condition: >
+        spawned_process and container and k8s.ns.name="bookshelf"
+        and proc.name in (bash, sh, dash, zsh)
+      output: >
+        shell in bookshelf (user=%user.name pod=%k8s.pod.name
+        container=%container.name command=%proc.cmdline)
+      priority: WARNING
+      tags: [bookshelf, process]

@@ -10,6 +10,7 @@ kubectl create namespace observability --dry-run=client -o yaml | kubectl apply 
 kubectl create namespace trivy-system --dry-run=client -o yaml | kubectl apply -f -
 kubectl create namespace opentelemetry-operator-system --dry-run=client -o yaml | kubectl apply -f -
 kubectl create namespace cert-manager --dry-run=client -o yaml | kubectl apply -f -
+kubectl create namespace falco --dry-run=client -o yaml | kubectl apply -f -
 
 helm repo add argo https://argoproj.github.io/argo-helm 2>/dev/null || true
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts 2>/dev/null || true
@@ -17,6 +18,7 @@ helm repo add grafana https://grafana.github.io/helm-charts 2>/dev/null || true
 helm repo add aqua https://aquasecurity.github.io/helm-charts 2>/dev/null || true
 helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts 2>/dev/null || true
 helm repo add jetstack https://charts.jetstack.io 2>/dev/null || true
+helm repo add falcosecurity https://falcosecurity.github.io/charts 2>/dev/null || true
 helm repo update
 
 echo "cert-manager"
@@ -80,6 +82,12 @@ helm upgrade --install kyverno kyverno/kyverno -n kyverno \
   --set backgroundController.resources.requests.memory=64Mi \
   --set reportsController.resources.requests.memory=64Mi \
   --wait --timeout 8m || echo "kyverno install failed — retry later"
+
+echo "falco"
+helm upgrade --install falco falcosecurity/falco -n falco \
+  --version 4.11.1 \
+  -f "$ROOT/k8s/gitops/governance/falco/values.yaml" \
+  --wait --timeout 8m || echo "falco install failed — retry later"
 
 echo "external-secrets"
 kubectl create namespace external-secrets --dry-run=client -o yaml | kubectl apply -f -

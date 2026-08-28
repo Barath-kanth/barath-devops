@@ -16,8 +16,8 @@ Backend APIs + SPA on EKS. Static landing on S3/CloudFront. Terraform for infra,
 | Terraform (dev/stage/prod) | `terraform/live/` |
 | Helm chart | `k8s/helm/chart/bookshelf` |
 | Argo CD apps | `k8s/gitops/argocd/` |
-| CI | `.github/workflows/ci-cd-gitops.yml` |
-| Architecture PDF | `docs/architecture.pdf` |
+| CI | `.github/workflows/ci-cd-gitops.yml` (build, Trivy scan, ECR, GitOps) |
+| Architecture | `docs/architecture.pdf` (+ `docs/architecture.md` source) |
 
 ## RDS + secrets
 
@@ -35,9 +35,13 @@ kubectl -n bookshelf get externalsecret,secret bookshelf-db
 4. `./k8s/gitops/karpenter/install-karpenter.sh`
 5. `kubectl apply -f k8s/gitops/mesh/policies.yaml`
 
+Falco installs with `bootstrap.sh` (DaemonSet in `falco` namespace). Check: `kubectl -n falco get pods`.
+
 Push to `main` with app changes → GitHub Actions builds images, pushes ECR, updates `image-tags.yaml`. Argo CD has automated sync on the bookshelf app so the cluster picks up the new tag without a manual sync.
 
 Helm-only edits under `k8s/` go straight to Git; Argo syncs those on its own.
+
+CI runs **Trivy** on each built image before push (CRITICAL/HIGH reported; build continues). **Trivy Operator** scans workloads in-cluster. **Falco** (`falco` namespace) watches runtime events on nodes and exposes metrics to Prometheus.
 
 ## CI variables (GitHub)
 
