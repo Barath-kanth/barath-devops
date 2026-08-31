@@ -37,7 +37,7 @@ kubectl -n bookshelf get externalsecret,secret bookshelf-db
 
 Falco installs with `bootstrap.sh` (DaemonSet in `falco` namespace). Check: `kubectl -n falco get pods`.
 
-Push to `main` with app changes → GitHub Actions builds images, pushes ECR, updates `image-tags.yaml`. Argo CD has automated sync on the bookshelf app so the cluster picks up the new tag without a manual sync.
+Push to `main` with app changes → unit/integration tests → Docker build (BuildKit GHA cache) → Trivy scan → ECR → `image-tags.yaml` bump → Argo sync.
 
 Helm-only edits under `k8s/` go straight to Git; Argo syncs those on its own.
 

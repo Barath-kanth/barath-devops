@@ -28,6 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       apps: ${{ steps.filter.outputs.apps }}
+      backend: ${{ steps.filter.outputs.backend }}
       landing: ${{ steps.filter.outputs.landing }}
     steps:
       - uses: actions/checkout@v5
@@ -38,13 +39,43 @@ jobs:
             apps:
               - 'apps/backend/**'
               - 'apps/frontend/**'
+            backend:
+              - 'apps/backend/**'
             landing:
               - 'apps/landing/**'
 
-  validate:
-    name: Validate
+  unit-tests:
+    name: Unit tests (${{ matrix.service }})
     needs: changes
-    if: needs.changes.outputs.apps == 'true' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    if: |
+      needs.changes.outputs.backend == 'true' ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [catalog-api, loans-api]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/backend/${{ matrix.service }}/package-lock.json
+
+      - name: Install and test
+        working-directory: apps/backend/${{ matrix.service }}
+        run: |
+          npm ci
+          npm test
+
+  integration-tests:
+    name: Integration tests
+    needs: changes
+    if: |
+      needs.changes.outputs.backend == 'true' ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -53,22 +84,28 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Syntax check backends
+      - name: Install backend deps
         run: |
-          node --check apps/backend/catalog-api/src/server.js
-          node --check apps/backend/catalog-api/src/app.js
-          node --check apps/backend/catalog-api/src/db.js
-          node --check apps/backend/loans-api/src/server.js
-          node --check apps/backend/loans-api/src/app.js
-          node --check apps/backend/loans-api/src/store.js
+          npm ci --prefix apps/backend/catalog-api
+          npm ci --prefix apps/backend/loans-api
+
+      - name: Run integration tests
+        working-directory: apps/backend
+        run: node --test test/integration.test.js
 
   build:
     name: ${{ matrix.name }}
-    needs: [changes, validate]
+    needs: [changes, unit-tests, integration-tests]
     if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.apps == 'true') ||
-      (github.event_name == 'pull_request' && needs.changes.outputs.apps == 'true') ||
-      github.event_name == 'workflow_dispatch'
+      always() &&
+      needs.changes.result == 'success' &&
+      (needs.unit-tests.result == 'success' || needs.unit-tests.result == 'skipped') &&
+      (needs.integration-tests.result == 'success' || needs.integration-tests.result == 'skipped') &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.apps == 'true') ||
+        (github.event_name == 'pull_request' && needs.changes.outputs.apps == 'true') ||
+        github.event_name == 'workflow_dispatch'
+      )
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -100,20 +137,26 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build image
         id: build
+        uses: docker/build-push-action@v6
         env:
           REGISTRY: ${{ vars.ECR_REGISTRY }}
-        run: |
-          TAG="${GITHUB_SHA:0:7}"
-          IMAGE="${REGISTRY}/${{ matrix.ecr_repo }}:${TAG}"
-          docker build -t "$IMAGE" "${{ matrix.context }}"
-          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+        with:
+          context: ${{ matrix.context }}
+          push: false
+          load: true
+          tags: ${{ vars.ECR_REGISTRY }}/${{ matrix.ecr_repo }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Trivy scan
         uses: aquasecurity/trivy-action@0.28.0
         with:
-          image-ref: ${{ steps.build.outputs.image }}
+          image-ref: ${{ vars.ECR_REGISTRY }}/${{ matrix.ecr_repo }}:${{ github.sha }}
           format: table
           exit-code: "0"
           severity: CRITICAL,HIGH
@@ -123,7 +166,10 @@ jobs:
         env:
           REGISTRY: ${{ vars.ECR_REGISTRY }}
         run: |
-          IMAGE="${{ steps.build.outputs.image }}"
+          TAG="${GITHUB_SHA:0:7}"
+          IMAGE="${REGISTRY}/${{ matrix.ecr_repo }}:${TAG}"
+          FULL_SHA_IMAGE="${REGISTRY}/${{ matrix.ecr_repo }}:${GITHUB_SHA}"
+          docker tag "$FULL_SHA_IMAGE" "$IMAGE"
           docker push "$IMAGE"
           docker tag "$IMAGE" "${REGISTRY}/${{ matrix.ecr_repo }}:latest"
           docker push "${REGISTRY}/${{ matrix.ecr_repo }}:latest"
