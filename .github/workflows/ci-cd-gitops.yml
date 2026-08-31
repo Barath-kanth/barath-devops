@@ -160,7 +160,7 @@ jobs:
         with:
           image-ref: ${{ vars.ECR_REGISTRY }}/${{ matrix.ecr_repo }}:${{ github.sha }}
           format: table
-          exit-code: "0"
+          exit-code: "1"
           severity: CRITICAL,HIGH
 
       - name: Push to ECR
