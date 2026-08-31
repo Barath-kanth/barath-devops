@@ -77,11 +77,17 @@ kubectl create namespace kyverno --dry-run=client -o yaml | kubectl apply -f -
 helm repo add kyverno https://kyverno.github.io/kyverno/ 2>/dev/null || true
 helm repo update kyverno
 helm upgrade --install kyverno kyverno/kyverno -n kyverno \
-  --version 3.3.7 \
+  --version 3.8.2 \
   --set admissionController.replicas=1 \
   --set backgroundController.resources.requests.memory=64Mi \
   --set reportsController.resources.requests.memory=64Mi \
   --wait --timeout 8m || echo "kyverno install failed — retry later"
+
+# Remove legacy ClusterPolicy resources if upgrading from kyverno.io/v1 policies
+kubectl delete clusterpolicy require-requests-limits disallow-privileged require-app-label disallow-latest-tag \
+  --ignore-not-found || true
+
+kubectl apply -f "$ROOT/k8s/gitops/policy/policies.yaml" || true
 
 echo "falco"
 helm upgrade --install falco falcosecurity/falco -n falco \
@@ -101,8 +107,6 @@ helm upgrade --install external-secrets external-secrets/external-secrets -n ext
 ROLE=$(cd "$ROOT/terraform/live/${ENV_NAME:-dev}" && terragrunt output -raw external_secrets_role_arn)
 kubectl annotate serviceaccount external-secrets -n external-secrets \
   eks.amazonaws.com/role-arn="$ROLE" --overwrite
-
-kubectl apply -f "$ROOT/k8s/gitops/policy/policies.yaml" || true
 
 kubectl label ns bookshelf istio-injection=disabled --overwrite
 for dep in catalog-api loans-api; do

@@ -1,103 +1,123 @@
 ---
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
 metadata:
   name: require-requests-limits
   annotations:
     policies.kyverno.io/title: Require CPU/memory requests and limits
     policies.kyverno.io/category: Best Practices
 spec:
-  validationFailureAction: Enforce
-  background: true
-  rules:
-    - name: validate-resources
-      match:
-        any:
-          - resources:
-              kinds: ["Pod"]
-              namespaces: ["bookshelf"]
-      validate:
-        message: "CPU and memory requests/limits are required in namespace bookshelf"
-        pattern:
-          spec:
-            containers:
-              - resources:
-                  requests:
-                    memory: "?*"
-                    cpu: "?*"
-                  limits:
-                    memory: "?*"
-                    cpu: "?*"
+  validationActions:
+    - Deny
+  evaluation:
+    background:
+      enabled: true
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: [CREATE, UPDATE]
+        resources: [pods]
+  matchConditions:
+    - name: bookshelf-namespace
+      expression: object.metadata.namespace == 'bookshelf'
+  validations:
+    - expression: >-
+        object.spec.containers.all(container,
+          has(container.resources) &&
+          has(container.resources.requests) &&
+          has(container.resources.requests.memory) &&
+          has(container.resources.requests.cpu) &&
+          has(container.resources.limits) &&
+          has(container.resources.limits.memory) &&
+          has(container.resources.limits.cpu))
+      message: CPU and memory requests/limits are required in namespace bookshelf
 ---
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
 metadata:
   name: disallow-privileged
   annotations:
     policies.kyverno.io/title: Disallow privileged containers
 spec:
-  validationFailureAction: Enforce
-  background: true
-  rules:
-    - name: privileged-containers
-      match:
-        any:
-          - resources:
-              kinds: ["Pod"]
-              namespaces: ["bookshelf"]
-      validate:
-        message: "Privileged containers are not allowed"
-        pattern:
-          spec:
-            =(securityContext):
-              =(privileged): false
-            containers:
-              - =(securityContext):
-                  =(privileged): false
-                  =(allowPrivilegeEscalation): false
+  validationActions:
+    - Deny
+  evaluation:
+    background:
+      enabled: true
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: [CREATE, UPDATE]
+        resources: [pods]
+  matchConditions:
+    - name: bookshelf-namespace
+      expression: object.metadata.namespace == 'bookshelf'
+  variables:
+    - name: allContainers
+      expression: >-
+        object.spec.containers +
+        object.spec.?initContainers.orValue([]) +
+        object.spec.?ephemeralContainers.orValue([])
+  validations:
+    - expression: >-
+        object.?spec.?securityContext.?privileged.orValue(false) == false
+      message: Privileged pod securityContext is not allowed
+    - expression: >-
+        variables.allContainers.all(c,
+          c.?securityContext.?privileged.orValue(false) == false &&
+          c.?securityContext.?allowPrivilegeEscalation.orValue(false) == false)
+      message: Privileged containers are not allowed
 ---
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
 metadata:
   name: require-app-label
   annotations:
     policies.kyverno.io/title: Require app.kubernetes.io/name label
 spec:
-  validationFailureAction: Enforce
-  background: true
-  rules:
-    - name: check-app-label
-      match:
-        any:
-          - resources:
-              kinds: ["Deployment", "StatefulSet"]
-              namespaces: ["bookshelf"]
-      validate:
-        message: "label app.kubernetes.io/name is required"
-        pattern:
-          metadata:
-            labels:
-              app.kubernetes.io/name: "?*"
+  validationActions:
+    - Deny
+  evaluation:
+    background:
+      enabled: true
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["apps"]
+        apiVersions: ["v1"]
+        operations: [CREATE, UPDATE]
+        resources: [deployments, statefulsets]
+  matchConditions:
+    - name: bookshelf-namespace
+      expression: object.metadata.namespace == 'bookshelf'
+  validations:
+    - expression: >-
+        object.metadata.?labels['app.kubernetes.io/name'].orValue('') != ''
+      message: label app.kubernetes.io/name is required
 ---
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
 metadata:
   name: disallow-latest-tag
   annotations:
     policies.kyverno.io/title: Disallow :latest image tag (Audit)
 spec:
-  validationFailureAction: Audit
-  background: true
-  rules:
-    - name: validate-image-tag
-      match:
-        any:
-          - resources:
-              kinds: ["Pod"]
-              namespaces: ["bookshelf"]
-      validate:
-        message: "Using the :latest tag is not recommended"
-        pattern:
-          spec:
-            containers:
-              - image: "!*:latest"
+  validationActions:
+    - Audit
+  evaluation:
+    background:
+      enabled: true
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: [CREATE, UPDATE]
+        resources: [pods]
+  matchConditions:
+    - name: bookshelf-namespace
+      expression: object.metadata.namespace == 'bookshelf'
+  validations:
+    - expression: >-
+        object.spec.containers.all(container, !container.image.endsWith(':latest'))
+      message: Using the :latest tag is not recommended
