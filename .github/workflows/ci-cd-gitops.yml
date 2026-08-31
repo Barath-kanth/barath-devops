@@ -39,8 +39,10 @@ jobs:
             apps:
               - 'apps/backend/**'
               - 'apps/frontend/**'
+              - '.github/workflows/ci-cd-gitops.yml'
             backend:
               - 'apps/backend/**'
+              - '.github/workflows/ci-cd-gitops.yml'
             landing:
               - 'apps/landing/**'
 
