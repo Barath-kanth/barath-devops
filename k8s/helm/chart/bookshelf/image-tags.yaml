@@ -1,9 +1,9 @@
 catalog-api:
   containerImage:
-    tag: "5da3579"
+    tag: "92ed7eb"
 loans-api:
   containerImage:
-    tag: "5da3579"
+    tag: "92ed7eb"
 frontend:
   containerImage:
-    tag: "5da3579"
+    tag: "92ed7eb"
